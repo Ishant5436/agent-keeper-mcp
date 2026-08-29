@@ -10,9 +10,10 @@ def test_payment_manager_initialization():
     mgr = X402PaymentManager()
     assert mgr.safety_limit == 5.00
     assert mgr.total_spent == 0.0
+    assert mgr._account.address.startswith("0x")
 
 
-def test_successful_x402_settlement():
+def test_successful_x402_settlement_with_eip712():
     mgr = X402PaymentManager()
     req = X402PaymentRequest(
         resource_url="https://api.quant-analytics.io/v1/alpha_signal",
@@ -23,6 +24,9 @@ def test_successful_x402_settlement():
     assert res.success is True
     assert res.payment_hash.startswith("0x")
     assert res.auth_token is not None
+    assert res.signature is not None
+    assert res.signature.startswith("0x")
+    assert len(res.signature) == 132  # 65-byte hex signature (0x + 130 hex chars)
     assert mgr.total_spent == 0.50
 
 

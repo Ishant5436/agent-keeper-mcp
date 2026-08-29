@@ -5,22 +5,43 @@ Strict Pydantic Type Definitions & Input Invariants (NASA Power of 10 Standard)
 import re
 from typing import Any
 
-from eth_utils import is_address, to_checksum_address
+from eth_utils import is_address, is_checksum_address, to_checksum_address
 from pydantic import BaseModel, Field, field_validator
 
 from agent_keeper.config import (
     MAX_AUTONOMOUS_PAYMENT_USDC,
     MAX_CALLDATA_BYTES,
+    MAX_VALUE_WEI_CAP,
     SUPPORTED_CHAINS,
 )
 
 HEX_REGEX = re.compile(r"^0x[a-fA-F0-9]*$")
 
 
+def validate_strict_eip55(addr: str) -> str:
+    """
+    Validate Ethereum address.
+    If address is mixed-case, strictly enforce exact EIP-55 checksum match.
+    Reject any address with invalid mixed-case characters.
+    """
+    assert isinstance(addr, str), "Address must be string"
+    clean = addr.strip()
+    if not is_address(clean):
+        raise ValueError(f"Invalid Ethereum address format: '{clean}'")
+
+    # If mixed-case, must match exact EIP-55 checksum
+    is_all_lower = clean == clean.lower()
+    is_all_upper = clean[2:] == clean[2:].upper()
+    if not (is_all_lower or is_all_upper) and not is_checksum_address(clean):
+        raise ValueError(
+            f"EIP-55 checksum validation failed: address '{clean}' contains invalid mixed-case checksum capitalization."
+        )
+
+    return to_checksum_address(clean)
+
+
 class TxExecutionRequest(BaseModel):
-    """
-    Onchain execution request payload passed by AI agent.
-    """
+    """Onchain execution request payload passed by AI agent."""
 
     target_address: str = Field(
         ..., description="Target EIP-55 contract or recipient address."
@@ -29,7 +50,9 @@ class TxExecutionRequest(BaseModel):
         default="0x", description="Hex-encoded transaction calldata payload."
     )
     value_wei: int = Field(
-        default=0, ge=0, description="Native ETH/token value in wei to transfer."
+        default=0,
+        ge=0,
+        description="Native ETH/token value in wei to transfer (capped at safety limit).",
     )
     chain_id: int = Field(default=1, description="Target EVM chain ID.")
     max_priority_fee_gwei: float | None = Field(
@@ -43,11 +66,8 @@ class TxExecutionRequest(BaseModel):
 
     @field_validator("target_address")
     @classmethod
-    def validate_target_address(cls, v: str) -> str:
-        assert isinstance(v, str), "Target address must be a string"
-        if not is_address(v):
-            raise ValueError(f"Invalid Ethereum address: {v}")
-        return to_checksum_address(v)
+    def validate_target(cls, v: str) -> str:
+        return validate_strict_eip55(v)
 
     @field_validator("calldata_hex")
     @classmethod
@@ -65,12 +85,21 @@ class TxExecutionRequest(BaseModel):
             )
         return clean
 
+    @field_validator("value_wei")
+    @classmethod
+    def validate_value_cap(cls, v: int) -> int:
+        assert v >= 0, "Value cannot be negative"
+        if v > MAX_VALUE_WEI_CAP:
+            raise ValueError(
+                f"Transaction value ({v} wei) exceeds autonomous safety ceiling ({MAX_VALUE_WEI_CAP} wei / 0.10 ETH)"
+            )
+        return v
+
     @field_validator("chain_id")
     @classmethod
     def validate_chain_id(cls, v: int) -> int:
         assert v > 0, "Chain ID must be positive"
         if v not in SUPPORTED_CHAINS:
-            # Allow unknown chain with warning but must be valid positive integer
             pass
         return v
 
@@ -88,9 +117,7 @@ class TxExecutionResponse(BaseModel):
 
 
 class X402PaymentRequest(BaseModel):
-    """
-    HTTP 402 Autonomous Micro-Payment settlement request.
-    """
+    """HTTP 402 Autonomous Micro-Payment settlement request."""
 
     resource_url: str = Field(..., description="Target API endpoint requiring payment.")
     amount_usdc: float = Field(..., gt=0.0, description="Amount in USDC requested.")
@@ -102,9 +129,7 @@ class X402PaymentRequest(BaseModel):
     @field_validator("recipient_address")
     @classmethod
     def validate_recipient(cls, v: str) -> str:
-        if not is_address(v):
-            raise ValueError(f"Invalid recipient address: {v}")
-        return to_checksum_address(v)
+        return validate_strict_eip55(v)
 
     @field_validator("amount_usdc")
     @classmethod
@@ -123,6 +148,7 @@ class X402PaymentResponse(BaseModel):
     amount_usdc: float
     recipient: str
     auth_token: str | None = None
+    signature: str | None = None
     unblocked_data: dict[str, Any] | None = None
     error: str | None = None
 

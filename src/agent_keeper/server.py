@@ -16,8 +16,10 @@ _src_dir = str(Path(__file__).parent.parent)
 if _src_dir not in sys.path:
     sys.path.insert(0, _src_dir)
 
-from typing import Any, Dict, Optional
+from typing import Any
+
 from mcp.server.fastmcp import FastMCP
+
 from agent_keeper.audit import AuditProofVerifier
 from agent_keeper.config import SUPPORTED_CHAINS
 from agent_keeper.relay import KeeperRelayClient
@@ -30,12 +32,12 @@ from agent_keeper.x402 import X402PaymentManager
 
 mcp = FastMCP(
     "agent-keeper",
-    instructions="Autonomous onchain transaction gateway, x402 micro-payment solver, and cryptographic audit verification protocol for KeeperHub."
+    instructions="Autonomous onchain transaction gateway, x402 micro-payment solver, and cryptographic audit verification protocol for KeeperHub.",
 )
 
-_relay_client = KeeperRelayClient()
-_payment_manager = X402PaymentManager()
 _audit_verifier = AuditProofVerifier()
+_relay_client = KeeperRelayClient(audit_verifier=_audit_verifier)
+_payment_manager = X402PaymentManager()
 
 
 @mcp.tool()
@@ -44,9 +46,9 @@ def keeper_execute_tx(
     calldata_hex: str = "0x",
     value_wei: int = 0,
     chain_id: int = 1,
-    max_priority_fee_gwei: Optional[float] = None,
-    idempotency_key: Optional[str] = None,
-) -> Dict[str, Any]:
+    max_priority_fee_gwei: float | None = None,
+    idempotency_key: str | None = None,
+) -> dict[str, Any]:
     """Execute an onchain transaction through KeeperHub's MEV-protected relay with automated gas optimization."""
     try:
         req = TxExecutionRequest(
@@ -68,8 +70,8 @@ def keeper_x402_settle(
     resource_url: str,
     amount_usdc: float,
     recipient_address: str,
-    token_address: Optional[str] = None,
-) -> Dict[str, Any]:
+    token_address: str | None = None,
+) -> dict[str, Any]:
     """Autonomously settle an HTTP 402 Payment Required challenge using EIP-712 payment permits."""
     try:
         req = X402PaymentRequest(
@@ -91,10 +93,10 @@ def keeper_x402_settle(
 
 @mcp.tool()
 def keeper_audit_verify(
-    tx_hash: Optional[str] = None,
-    task_id: Optional[str] = None,
+    tx_hash: str | None = None,
+    task_id: str | None = None,
     chain_id: int = 1,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Cryptographically verify the Merkle proof, inclusion block, and execution receipt of an agent transaction."""
     try:
         req = AuditProofRequest(tx_hash=tx_hash, task_id=task_id, chain_id=chain_id)
@@ -105,7 +107,7 @@ def keeper_audit_verify(
 
 
 @mcp.tool()
-def keeper_agent_balance() -> Dict[str, Any]:
+def keeper_agent_balance() -> dict[str, Any]:
     """Inspect the AI agent's multi-chain operational treasury balances, spent budget, and remaining limits."""
     return {
         "success": True,
