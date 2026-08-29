@@ -9,6 +9,7 @@ Exposes tools for:
 """
 
 from typing import Any
+
 import httpx
 from mcp.server.fastmcp import FastMCP
 
@@ -36,7 +37,10 @@ def _query_rpc_balance(address: str, chain_id: int) -> dict[str, Any]:
     """Query live onchain ETH balance via public JSON-RPC."""
     rpc_url = PUBLIC_RPC_URLS.get(chain_id)
     if not rpc_url:
-        return {"error": f"No RPC configured for chain {chain_id}", "source": "unavailable"}
+        return {
+            "error": f"No RPC configured for chain {chain_id}",
+            "source": "unavailable",
+        }
 
     try:
         with httpx.Client(timeout=3.5) as client:

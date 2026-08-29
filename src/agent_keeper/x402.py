@@ -97,7 +97,10 @@ class X402PaymentManager:
             recipient=req.recipient_address,
             auth_token=f"Bearer x402_{payment_hash[:16]}",
             signature=signature,
-            unblocked_data={"status": "resource_unlocked", "resource": req.resource_url},
+            unblocked_data={
+                "status": "resource_unlocked",
+                "resource": req.resource_url,
+            },
         )
         self._settlement_history.append(receipt)
         return receipt
