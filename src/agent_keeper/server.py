@@ -5,23 +5,15 @@ Exposes tools for:
 - keeper_execute_tx: Execute onchain transactions via KeeperHub with MEV protection & retry management
 - keeper_x402_settle: Autonomous HTTP 402 micro-payment settlement for paid APIs
 - keeper_audit_verify: Cryptographic Merkle inclusion and execution receipt verifier
-- keeper_agent_balance: Multi-chain agent treasury balance inspector
+- keeper_agent_balance: Real-time multi-chain RPC balance and operational budget inspector
 """
 
-import sys
-from pathlib import Path
-
-# Ensure src is in sys.path
-_src_dir = str(Path(__file__).parent.parent)
-if _src_dir not in sys.path:
-    sys.path.insert(0, _src_dir)
-
 from typing import Any
-
+import httpx
 from mcp.server.fastmcp import FastMCP
 
 from agent_keeper.audit import AuditProofVerifier
-from agent_keeper.config import SUPPORTED_CHAINS
+from agent_keeper.config import PUBLIC_RPC_URLS, SUPPORTED_CHAINS
 from agent_keeper.relay import KeeperRelayClient
 from agent_keeper.schemas import (
     AuditProofRequest,
@@ -38,6 +30,39 @@ mcp = FastMCP(
 _audit_verifier = AuditProofVerifier()
 _relay_client = KeeperRelayClient(audit_verifier=_audit_verifier)
 _payment_manager = X402PaymentManager()
+
+
+def _query_rpc_balance(address: str, chain_id: int) -> dict[str, Any]:
+    """Query live onchain ETH balance via public JSON-RPC."""
+    rpc_url = PUBLIC_RPC_URLS.get(chain_id)
+    if not rpc_url:
+        return {"error": f"No RPC configured for chain {chain_id}", "source": "unavailable"}
+
+    try:
+        with httpx.Client(timeout=3.5) as client:
+            resp = client.post(
+                rpc_url,
+                json={
+                    "jsonrpc": "2.0",
+                    "method": "eth_getBalance",
+                    "params": [address, "latest"],
+                    "id": 1,
+                },
+            )
+            if resp.status_code == 200:
+                result = resp.json().get("result")
+                if result and isinstance(result, str):
+                    val_wei = int(result, 16)
+                    val_eth = val_wei / 10**18
+                    return {
+                        "balance_wei": val_wei,
+                        "balance_eth": round(val_eth, 6),
+                        "source": "live_rpc",
+                    }
+    except Exception as e:
+        return {"error": str(e), "source": "rpc_unreachable"}
+
+    return {"source": "unavailable"}
 
 
 @mcp.tool()
@@ -107,22 +132,41 @@ def keeper_audit_verify(
 
 
 @mcp.tool()
-def keeper_agent_balance() -> dict[str, Any]:
-    """Inspect the AI agent's multi-chain operational treasury balances, spent budget, and remaining limits."""
+def keeper_agent_balance(address: str | None = None) -> dict[str, Any]:
+    """Inspect the AI agent's live multi-chain onchain treasury balances, spent budget, and remaining limits."""
+    target_addr = address or _payment_manager.signer_address
+
+    chain_queries = {
+        "Base Mainnet (8453)": (8453, _query_rpc_balance(target_addr, 8453)),
+        "Arbitrum One (42161)": (42161, _query_rpc_balance(target_addr, 42161)),
+        "Ethereum Mainnet (1)": (1, _query_rpc_balance(target_addr, 1)),
+    }
+
+    balances: dict[str, Any] = {}
+    for name, (_, data) in chain_queries.items():
+        if data.get("source") == "live_rpc":
+            balances[name] = {
+                "ETH": f"{data.get('balance_eth', 0.0):.6f} ETH",
+                "wei": data.get("balance_wei", 0),
+                "source": "live_rpc",
+            }
+        else:
+            balances[name] = {
+                "ETH": "0.000000 ETH",
+                "source": data.get("source", "unreachable"),
+                "status": "sandbox_operational",
+            }
+
     return {
         "success": True,
-        "treasury_address": "0x71C56877e5844e0e560111166687000000000000",
+        "queried_address": target_addr,
         "spending_limit_usdc": _payment_manager.safety_limit,
         "total_spent_usdc": _payment_manager.total_spent,
         "remaining_budget_usdc": round(
             _payment_manager.safety_limit - _payment_manager.total_spent, 6
         ),
         "supported_chains": SUPPORTED_CHAINS,
-        "balances": {
-            "Base Mainnet (8453)": {"ETH": "0.45 ETH", "USDC": "250.00 USDC"},
-            "Arbitrum One (42161)": {"ETH": "0.30 ETH", "USDC": "180.00 USDC"},
-            "Ethereum Mainnet (1)": {"ETH": "1.20 ETH", "USDC": "500.00 USDC"},
-        },
+        "balances": balances,
     }
 
 

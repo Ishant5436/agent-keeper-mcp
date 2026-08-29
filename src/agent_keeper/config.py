@@ -13,6 +13,14 @@ SUPPORTED_CHAINS: dict[int, str] = {
     11155111: "Sepolia Testnet",
 }
 
+# Public RPC Endpoints for Real-Time Onchain Queries
+PUBLIC_RPC_URLS: dict[int, str] = {
+    1: os.environ.get("ETH_RPC_URL", "https://cloudflare-eth.com"),
+    8453: os.environ.get("BASE_RPC_URL", "https://mainnet.base.org"),
+    42161: os.environ.get("ARB_RPC_URL", "https://arb1.arbitrum.io/rpc"),
+    11155111: os.environ.get("SEPOLIA_RPC_URL", "https://rpc.sepolia.org"),
+}
+
 # KeeperHub Relay & Gateway Settings
 KEEPERHUB_API_URL = os.environ.get("KEEPERHUB_API_URL", "https://api.keeperhub.com/v1")
 KEEPERHUB_API_KEY = os.environ.get("KEEPERHUB_API_KEY", "")

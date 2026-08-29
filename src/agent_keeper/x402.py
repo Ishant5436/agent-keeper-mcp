@@ -29,6 +29,11 @@ class X402PaymentManager:
         self._account = Account.from_key(self._private_key)
         self._settlement_history = []
 
+    @property
+    def signer_address(self) -> str:
+        """Return the EIP-55 checksum address of the agent signer."""
+        return self._account.address
+
     def _create_eip712_signature(self, req: X402PaymentRequest, timestamp: int) -> str:
         """Sign structured EIP-712 micro-payment permit."""
         typed_data = {
@@ -43,77 +48,56 @@ class X402PaymentManager:
                     {"name": "resourceUrl", "type": "string"},
                     {"name": "amountUSDC", "type": "uint256"},
                     {"name": "recipient", "type": "address"},
-                    {"name": "deadline", "type": "uint256"},
+                    {"name": "validUntil", "type": "uint256"},
+                    {"name": "nonce", "type": "bytes32"},
                 ],
             },
             "primaryType": "MicroPaymentPermit",
             "domain": {
-                "name": "KeeperHub x402 Protocol",
-                "version": "1.0",
-                "chainId": 8453,
-                "verifyingContract": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+                "name": "KeeperHub x402 Gateway",
+                "version": "1",
+                "chainId": 8453,  # Base Mainnet
+                "verifyingContract": "0x4020000000000000000000000000000000000402",
             },
             "message": {
                 "resourceUrl": req.resource_url,
-                "amountUSDC": int(req.amount_usdc * 1e6),
+                "amountUSDC": int(req.amount_usdc * 10**6),
                 "recipient": req.recipient_address,
-                "deadline": timestamp + 3600,
+                "validUntil": timestamp + 300,
+                "nonce": "0x" + secrets.token_hex(32),
             },
         }
         signable = encode_typed_data(full_message=typed_data)
-        signed = self._account.sign_message(signable)
-        return signed.signature.to_0x_hex()
+        signed = Account.sign_message(signable, private_key=self._private_key)
+        return "0x" + signed.signature.hex()
 
     def settle_payment(self, req: X402PaymentRequest) -> X402PaymentResponse:
-        """
-        Construct authentic EIP-712 payment authorization, verify cumulative limits,
-        and return signed payment token.
-        """
-        assert req is not None, "Payment request cannot be None"
-        assert req.amount_usdc > 0.0, "Amount must be strictly positive"
+        """Autonomously evaluate and settle HTTP 402 challenge within safety limits."""
+        assert req.amount_usdc > 0.0, "Payment amount must be positive"
+        assert req.recipient_address is not None, "Recipient address required"
 
-        # Check cumulative safety budget invariant
-        if (self.total_spent + req.amount_usdc) > self.safety_limit:
+        # Safety Budget Guard
+        if self.total_spent + req.amount_usdc > self.safety_limit:
             return X402PaymentResponse(
                 success=False,
                 amount_usdc=req.amount_usdc,
                 recipient=req.recipient_address,
-                error=f"Cumulative budget exceeded: spending ${req.amount_usdc:.2f} would exceed limit of ${self.safety_limit:.2f} (already spent: ${self.total_spent:.2f})",
+                error=f"Cumulative budget exceeded. Remaining: ${self.safety_limit - self.total_spent:.2f}",
             )
 
-        current_time = int(time.time())
-        signature = self._create_eip712_signature(req, current_time)
-        payment_hash = (
-            "0x"
-            + keccak(f"{req.resource_url}:{req.amount_usdc}:{signature}".encode()).hex()
-        )
-        auth_token = f"x402_bearer_{secrets.token_urlsafe(24)}"
+        now = int(time.time())
+        signature = self._create_eip712_signature(req, now)
+        payment_hash = "0x" + keccak(text=f"{signature}:{now}").hex()
 
-        # Increment spent counter
-        self.total_spent = round(self.total_spent + req.amount_usdc, 6)
-
-        record = {
-            "payment_hash": payment_hash,
-            "url": req.resource_url,
-            "amount": req.amount_usdc,
-            "recipient": req.recipient_address,
-            "signer": self._account.address,
-            "signature": signature,
-            "timestamp": current_time,
-        }
-        self._settlement_history.append(record)
-
-        return X402PaymentResponse(
+        self.total_spent += req.amount_usdc
+        receipt = X402PaymentResponse(
             success=True,
             payment_hash=payment_hash,
             amount_usdc=req.amount_usdc,
             recipient=req.recipient_address,
-            auth_token=auth_token,
+            auth_token=f"Bearer x402_{payment_hash[:16]}",
             signature=signature,
-            unblocked_data={
-                "status": "SETTLED",
-                "receipt_url": f"https://explorer.keeperhub.com/x402/{payment_hash}",
-                "payment_protocol": "MPP/EIP-712",
-                "signer_address": self._account.address,
-            },
+            unblocked_data={"status": "resource_unlocked", "resource": req.resource_url},
         )
+        self._settlement_history.append(receipt)
+        return receipt
