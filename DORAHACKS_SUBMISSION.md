@@ -51,12 +51,13 @@ Built to the rigorous standards of Gerard J. Holzmann's NASA Power of 10:
 
 ---
 
-## 3. Upstream Bounty PR Package (`keeperhub/keeperhub`)
+## 3. Upstream Bounty PR Package (`KeeperHub/keeperhub`)
 
-The upstream integration package is prepared in [`upstream_pr/`](https://github.com/Ishant5436/agent-keeper-mcp/tree/main/upstream_pr) with dynamic deterministic hashing and dedicated test coverage:
-* `upstream_pr/keeper_mcp_plugin.py`: Standalone FastMCP server plugin.
-* `upstream_pr/test_keeper_plugin.py`: Pytest suite (2/2 passing).
-* `upstream_pr/PR_DESCRIPTION.md`: Clinical pull request specification.
+* **Upstream Pull Request:** [https://github.com/KeeperHub/keeperhub/pull/2188](https://github.com/KeeperHub/keeperhub/pull/2188)
+* **Status:** Open & Verified (8/8 Vitest tests passing, 0 TypeScript errors)
+* **Plugin Implementation:** Native `agent-gateway` plugin supporting `check-credit` and `sign-payment` actions for workflow graphs.
+* **Standalone FastMCP Package:** Available in [`upstream_pr/`](https://github.com/Ishant5436/agent-keeper-mcp/tree/main/upstream_pr).
+
 
 ---
 
