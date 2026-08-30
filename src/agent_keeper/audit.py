@@ -1,6 +1,6 @@
 """
 Cryptographic Audit & Merkle Proof Verification Engine
-NASA Power of 10 Invariant: Minimum 2 assertions per function.
+Power of 10 Safety Invariants Invariant: Minimum 2 assertions per function.
 Maintains an immutable cryptographic state tree and verifies cryptographic inclusion proofs.
 """
 

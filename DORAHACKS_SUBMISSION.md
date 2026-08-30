@@ -41,8 +41,8 @@ Autonomous AI reasoning agents (Claude, Gemini, Antigravity, OpenAI Assistants) 
 * **`keeper_audit_verify`**: Maintains an immutable cryptographic state ledger and verifies Merkle inclusion proofs for executed tasks.
 * **`keeper_agent_balance`**: Inspects operational agent spending limits and multi-chain test/live treasury allocations across Base, Arbitrum, and Ethereum.
 
-### 🛡️ NASA Power of 10 Safety Architecture
-Built to the rigorous standards of Gerard J. Holzmann's NASA Power of 10:
+### 🛡️ Power of 10 Safety Invariants Safety Architecture
+Built to the rigorous standards of Gerard J. Holzmann's Power of 10 Safety Invariants:
 * **Bounded Loops:** Deterministic upper bound ($N \le 10$) on all retry loops.
 * **Strict EIP-55 Invariants:** Strict mixed-case checksum validation rejecting corrupted addresses.
 * **Autonomous Budget Guard:** Strict single-call ($5.00 USDC) and native transfer ceiling (0.10 ETH) to prevent balance drains.
@@ -68,4 +68,4 @@ Built to the rigorous standards of Gerard J. Holzmann's NASA Power of 10:
 | **0:00 - 0:25** | Terminal running `./demo.py` Step 1 | *"Welcome to AgentKeeper-MCP. Here we inspect our autonomous agent's multi-chain treasury and spending limits."* |
 | **0:25 - 0:55** | Step 2 (x402 Settlement) | *"When an AI agent encounters a paid data API with an HTTP 402 challenge, AgentKeeper constructs an authentic EIP-712 micro-payment permit, signs it, and unlocks the resource."* |
 | **0:55 - 1:30** | Step 3 (Onchain Relay) | *"Next, the agent executes a transaction payload on Base. The relay manages nonce assignment, idempotency tracking, and transaction confirmation."* |
-| **1:30 - 2:00** | Step 4 (Merkle Proof) & Pytest | *"Finally, the agent cryptographically verifies the Merkle inclusion receipt against the state ledger. 23/23 tests pass with NASA Power of 10 safety invariants."* |
+| **1:30 - 2:00** | Step 4 (Merkle Proof) & Pytest | *"Finally, the agent cryptographically verifies the Merkle inclusion receipt against the state ledger. 23/23 tests pass with Power of 10 Safety Invariants safety invariants."* |

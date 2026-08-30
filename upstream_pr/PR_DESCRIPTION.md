@@ -10,6 +10,6 @@ This PR implements native Model Context Protocol (MCP) server bindings for Keepe
 * **`keeper_agent_balance`**: Multi-chain treasury monitoring for agent accounts.
 
 ## Engineering Standards
-* NASA Power of 10 compliance (bounded loops, strict type invariants, zero dynamic leaks).
+* Power of 10 Safety Invariants compliance (bounded loops, strict type invariants, zero dynamic leaks).
 * 100% test coverage with Pytest.
 * Zero external breaking changes to existing KeeperHub CLI or REST endpoints.

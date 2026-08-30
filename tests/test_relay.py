@@ -1,5 +1,5 @@
 """
-Test Suite for Onchain Execution Relay (NASA Power of 10 Invariants)
+Test Suite for Onchain Execution Relay (Power of 10 Safety Invariants Invariants)
 """
 
 from agent_keeper.relay import KeeperRelayClient

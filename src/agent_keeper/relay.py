@@ -1,6 +1,6 @@
 """
 Onchain Relay & Execution Engine
-Implements Gerard J. Holzmann's NASA Power of 10 Rules:
+Implements Gerard J. Holzmann's Power of 10 Safety Invariants Rules:
 - Rule 2: Bounded loops (Max 10 iterations)
 - Rule 5: Minimum 2 assertions per function
 - Rule 7: Check all return values and parameters
@@ -60,7 +60,7 @@ class KeeperRelayClient:
         current_nonce = 101
         last_error = None
 
-        # Bounded Loop (NASA Rule 2: Loop must have a fixed upper bound)
+        # Bounded Loop (Deterministic Safety Rule 2: Loop must have a fixed upper bound)
         for attempt in range(1, self.max_retries + 1):
             assert attempt <= self.max_retries, "Loop invariant violated"
             if simulate_failure:

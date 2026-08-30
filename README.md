@@ -43,9 +43,9 @@ flowchart TD
 
 ---
 
-## 🛡️ NASA Power of 10 Safety Invariants
+## 🛡️ Power of 10 Safety Invariants Safety Invariants
 
-All code strictly implements Gerard J. Holzmann's NASA Power of 10 rules:
+All code strictly implements Gerard J. Holzmann's Power of 10 Safety Invariants rules:
 1. **Bounded Loops:** Deterministic upper bound ($N \le 10$) on all retry loops.
 2. **Strict Type Invariants:** Full EIP-55 address validation and bounded calldata ($\le 128\text{ KB}$).
 3. **Budget Safety Caps:** Autonomous spending limit ($5.00 USDC cap per call) and native transfer ceiling (0.10 ETH) to prevent balance drains.

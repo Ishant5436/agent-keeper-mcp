@@ -1,5 +1,5 @@
 """
-Strict Pydantic Type Definitions & Input Invariants (NASA Power of 10 Standard)
+Strict Pydantic Type Definitions & Input Invariants (Power of 10 Safety Invariants Standard)
 """
 
 import re

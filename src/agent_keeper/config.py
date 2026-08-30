@@ -26,7 +26,7 @@ KEEPERHUB_API_URL = os.environ.get("KEEPERHUB_API_URL", "https://api.keeperhub.c
 KEEPERHUB_API_KEY = os.environ.get("KEEPERHUB_API_KEY", "")
 AGENT_PRIVATE_KEY = os.environ.get("AGENT_PRIVATE_KEY", "")
 
-# NASA Power of 10 Safety Invariant Constants
+# Power of 10 Safety Invariants Safety Invariant Constants
 MAX_RETRY_ATTEMPTS = 10
 MAX_CALLDATA_BYTES = 131072  # 128 KB
 MAX_AUTONOMOUS_PAYMENT_USDC = 5.00  # Strict micro-payment budget per call ($5.00 USDC)
