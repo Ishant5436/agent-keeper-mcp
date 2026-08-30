@@ -136,6 +136,9 @@ class KeeperRelayClient:
                 )
 
                 if req.idempotency_key:
+                    if len(self._idempotency_cache) >= 1024:
+                        oldest_key = next(iter(self._idempotency_cache))
+                        del self._idempotency_cache[oldest_key]
                     self._idempotency_cache[req.idempotency_key] = response
 
                 return response

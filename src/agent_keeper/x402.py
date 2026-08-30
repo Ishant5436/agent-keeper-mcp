@@ -89,7 +89,7 @@ class X402PaymentManager:
         signature = self._create_eip712_signature(req, now)
         payment_hash = "0x" + keccak(text=f"{signature}:{now}").hex()
 
-        self.total_spent += req.amount_usdc
+        self.total_spent = round(self.total_spent + req.amount_usdc, 6)
         receipt = X402PaymentResponse(
             success=True,
             payment_hash=payment_hash,
