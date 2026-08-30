@@ -100,7 +100,9 @@ class TxExecutionRequest(BaseModel):
     def validate_chain_id(cls, v: int) -> int:
         assert v > 0, "Chain ID must be positive"
         if v not in SUPPORTED_CHAINS:
-            pass
+            raise ValueError(
+                f"Unsupported chain ID: {v}. Supported: {list(SUPPORTED_CHAINS.keys())}"
+            )
         return v
 
 
