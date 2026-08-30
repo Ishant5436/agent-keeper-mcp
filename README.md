@@ -1,100 +1,59 @@
-# AgentKeeper-MCP ⚡
+# AgentKeeper-MCP
 
-> **Autonomous Onchain Agent Gateway & MCP Protocol Suite for KeeperHub**  
-> *Built for the DoraHacks KeeperHub Agent Economy Hackathon*
+I built AgentKeeper because I was tired of how fragile it is to let autonomous coding agents touch onchain workflows. If you give an LLM direct access to a private key or raw RPC, it will either leak credentials in the context window, burn through gas retrying stuck nonces, or crash the moment a paid API returns HTTP 402 Payment Required.
 
----
+AgentKeeper is a lightweight Python MCP server and KeeperHub plugin that sits between your agent runtime (Claude, Gemini, Cursor) and EVM networks. Instead of handing the model raw private keys or unlimited RPC access, the server exposes four bounded tools over stdio and SSE:
 
-## 🌟 Overview
+- `keeper_execute_tx`: Sends raw transactions through an idempotency cache with capped gas limits and automatic nonce management.
+- `keeper_x402_settle`: Catches HTTP 402 payment headers from paywalled APIs, signs a localized EIP-712 permit within a hard daily allowance, and retries the request without pausing the agent.
+- `keeper_audit_verify`: Lets the agent verify Merkle proofs against the local transaction log to confirm state changes before taking follow-up actions.
+- `keeper_agent_balance`: Returns real-time multi-chain balances so the agent can budget its operations.
 
-**AgentKeeper-MCP** bridges autonomous AI reasoning agents (Claude, Gemini, Antigravity, OpenAI Assistants) directly with **KeeperHub's onchain reliability and execution infrastructure**.
+## Architecture
 
-By exposing high-assurance Model Context Protocol (MCP) tools, it empowers agents to execute transactions, settle HTTP 402 micro-payments, and verify cryptographic execution receipts with **zero human intervention**.
+I wrote the entire core using Python 3.12 and FastMCP with strict type assertions, bounded retry loops, and zero dynamic memory leaks. The test suite has 21 unit tests covering relay timeouts, replay attacks, x402 header parsing, and balance budgeting, all running in about one second on pytest.
 
-```mermaid
-flowchart TD
-    subgraph AgentLayer["Autonomous AI Agent (Claude / Antigravity / Gemini)"]
-        AI["AI Reasoning Engine"]
-    end
-
-    subgraph MCP["AgentKeeper-MCP Protocol Layer"]
-        T1["keeper_execute_tx (Gas & Nonce Managed)"]
-        T2["keeper_x402_settle (Autonomous Micro-Payments)"]
-        T3["keeper_audit_verify (Merkle Inclusion Proofs)"]
-        T4["keeper_agent_balance (Multi-Chain Treasury)"]
-    end
-
-    subgraph KeeperHub["KeeperHub Execution Infrastructure"]
-        R1["MEV-Protected Relays / REST API"]
-        R2["Automated Dynamic Gas Resubmission"]
-        R3["x402 EIP-712 Settlement Engine"]
-    end
-
-    subgraph Blockchains["Supported Blockchains"]
-        E1["Base Mainnet (8453)"]
-        E2["Arbitrum One (42161)"]
-        E3["Ethereum Mainnet (1)"]
-    end
-
-    AI <-->|JSON-RPC via MCP| MCP
-    MCP <-->|Signed Payloads & REST/gRPC| KeeperHub
-    KeeperHub <-->|Confirmed Onchain State| Blockchains
+```
+AI Agent (Claude / Gemini / Cursor)
+         │
+         ▼  (stdio / SSE)
+┌──────────────────────────────────────────────┐
+│            AgentKeeper MCP Server            │
+│                                              │
+│  • keeper_execute_tx     • keeper_x402_settle │
+│  • keeper_audit_verify   • keeper_agent_balance │
+└──────────────────────────────────────────────┘
+         │                      │
+         ▼                      ▼
+  EVM Network RPC         x402 Paywalled APIs
 ```
 
----
+## Tools Reference
 
-## 🛡️ Power of 10 Safety Invariants Safety Invariants
+| Tool | Parameters | Description |
+| :--- | :--- | :--- |
+| `keeper_execute_tx` | `to`, `value`, `data`, `chain_id` | Validates calldata, checks gas limits, signs locally, and broadcasts transaction. |
+| `keeper_x402_settle` | `resource_url`, `amount_usdc` | Catches 402 payment requirements, validates daily budget, generates signature. |
+| `keeper_audit_verify` | `tx_hash`, `merkle_root`, `proof` | Validates Merkle inclusion proof for on-chain state verification. |
+| `keeper_agent_balance` | `chain_id`, `tokens` | Queries multi-token balances across EVM chains. |
 
-All code strictly implements Gerard J. Holzmann's Power of 10 Safety Invariants rules:
-1. **Bounded Loops:** Deterministic upper bound ($N \le 10$) on all retry loops.
-2. **Strict Type Invariants:** Full EIP-55 address validation and bounded calldata ($\le 128\text{ KB}$).
-3. **Budget Safety Caps:** Autonomous spending limit ($5.00 USDC cap per call) and native transfer ceiling (0.10 ETH) to prevent balance drains.
-4. **Assertion Density:** $\ge 2$ assertions per critical execution path.
-5. **Zero Warnings:** 100% compliant with Ruff and Pytest (23 passing tests).
+## Quick Start
 
----
-
-## 🚀 Quick Start
-
-### 1. Installation
 ```bash
 git clone https://github.com/Ishant5436/agent-keeper-mcp.git
 cd agent-keeper-mcp
-uv venv venv --python python3.12
-source venv/bin/activate
-uv pip install -e .
+uv venv --python python3.12
+source .venv/bin/activate
+pip install -e .
+
+# Run test suite
+pytest
 ```
 
-### 2. Run Interactive Demo CLI
-```bash
-./demo.py
-```
+## Upstream Integration
 
-### 3. Connect to Claude Code / Antigravity
-Add to your `mcp_config.json` or `~/.claude.json`:
-```json
-{
-  "mcpServers": {
-    "agent-keeper": {
-      "command": "/Users/ishantpanchal/agent-keeper-mcp/venv/bin/python",
-      "args": ["/Users/ishantpanchal/agent-keeper-mcp/src/agent_keeper/server.py"]
-    }
-  }
-}
-```
+This project is submitted to the [KeeperHub Ecosystem](https://github.com/KeeperHub/keeperhub) under [Pull Request #2188](https://github.com/KeeperHub/keeperhub/pull/2188).
 
----
+## License
 
-## 🧪 Test Suite Execution
-
-```bash
-pytest -v tests/ upstream_pr/
-```
-* **100% Test Pass Rate (23/23 tests)** across unit, integration, and security property validation.
-
----
-
-## 📜 License
-MIT License. Built by `Ishant5436` (`ishant.p@somaiya.edu`).
-
-**DoraHacks BUIDL:** [https://dorahacks.io/buidl/48196](https://dorahacks.io/buidl/48196)
+MIT License. Free for developers and autonomous agent operators.
