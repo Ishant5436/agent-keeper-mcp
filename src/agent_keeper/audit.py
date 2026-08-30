@@ -37,7 +37,10 @@ class AuditProofVerifier:
             keccak(leaf.encode("utf-8") if isinstance(leaf, str) else leaf)
             for leaf in leaves
         ]
-        while len(current_level) > 1:
+        # Bounded loop (Power of 10 Rule 2: fixed upper bound)
+        for _ in range(64):
+            if len(current_level) <= 1:
+                break
             if len(current_level) % 2 != 0:
                 current_level.append(current_level[-1])
             next_level = []
