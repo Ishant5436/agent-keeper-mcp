@@ -99,3 +99,23 @@ def test_x402_payment_request_bounds():
             amount_usdc=100.00,
             recipient_address="0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
         )
+
+
+def test_mantle_chain_id_support():
+    req = TxExecutionRequest(
+        target_address="0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+        calldata_hex="0x",
+        value_wei=0,
+        chain_id=5000,
+    )
+    assert req.chain_id == 5000
+
+
+def test_creditcoin_chain_id_support():
+    req = TxExecutionRequest(
+        target_address="0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+        calldata_hex="0x",
+        value_wei=0,
+        chain_id=1024,
+    )
+    assert req.chain_id == 1024
