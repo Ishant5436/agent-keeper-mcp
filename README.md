@@ -3,8 +3,12 @@
 > A non-custodial Model Context Protocol (MCP) server that gives autonomous AI agents a safe execution gateway to EVM networks and HTTP 402 paywalled APIs.
 
 [![Tests](https://img.shields.io/badge/tests-51%2F51%20passing-brightgreen)](https://github.com/Ishant5436/agent-keeper-mcp)
+[![CI](https://github.com/Ishant5436/agent-keeper-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Ishant5436/agent-keeper-mcp/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Upstream PR](https://img.shields.io/badge/KeeperHub-PR%20%232188-orange)](https://github.com/KeeperHub/keeperhub/pull/2188)
+[![Safety Standard](https://img.shields.io/badge/Safety%20Standard-Deterministic%20Invariants-purple)](src/agent_keeper/audit.py)
+
+> **1-Second Instant Demo:** `make demo`
 
 ![AgentKeeper MCP Demo](assets/agent_keeper_demo.gif)
 
