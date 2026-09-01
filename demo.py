@@ -24,7 +24,7 @@ from agent_keeper.server import (
 
 def print_step(title: str):
     print("\n" + "=" * 70)
-    print(f"🔹 {title}")
+    print(f"[STEP]  {title}")
     print("=" * 70)
 
 
@@ -68,7 +68,7 @@ def main():
     print(json.dumps(audit_res, indent=2))
 
     print("\n" + "#" * 70)
-    print("✅ All 4 Autonomous Onchain Workflows Verified Successfully!")
+    print("[SUCCESS]  All 4 Autonomous Onchain Workflows Verified Successfully!")
     print("#" * 70 + "\n")
 
 
