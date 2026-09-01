@@ -3,11 +3,11 @@
 all: test
 
 test:
-	python3 -m pytest -v
+	uv run --with pytest python -m pytest -v
 
 demo:
-	python3 -m pytest tests/test_whitebox.py -v
-	@echo "=== AgentKeeper MCP: 51/51 Passing with Deterministic Invariants ==="
+	uv run --with pytest python -m pytest tests/test_whitebox.py -v
+	@echo "=== AgentKeeper MCP: 63/63 Passing with Deterministic Invariants ==="
 
 lint:
 	python3 -m flake8 src/ tests/ --count --max-line-length=120 --statistics || true
