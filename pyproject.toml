@@ -22,3 +22,8 @@ pythonpath = ["src"]
 
 [tool.ruff.lint]
 ignore = ["BLE001"]
+
+[dependency-groups]
+dev = [
+    "hypothesis>=6.167.1",
+]
