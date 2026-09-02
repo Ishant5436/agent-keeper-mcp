@@ -85,7 +85,7 @@ Rule 3: Deterministic Memory       | Bounded memory structures          | MAX_IN
 Rule 4: Function Length            | <= 60 lines per routine            | Modular helpers; zero monolithic routines.
 Rule 5: Assertion Density          | >= 2 assertions per function       | Pre-condition & post-condition validation in every unit.
 Rule 7: Check Returns & Parameters | Strict input validation            | EIP-55 checksum, calldata byte limits (128KB), wei caps.
-Rule 10: Static Analysis & Tests   | 100% test pass rate, 0 warnings   | 63/63 passing pytest test suite (100% coverage).
+Rule 10: Static Analysis & Tests   | 100% test pass rate, 0 warnings   | 67/67 passing test suite (including 5,000-case Hypothesis property-based fuzz tests).
 ```
 
 ---
