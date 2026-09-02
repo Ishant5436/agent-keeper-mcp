@@ -2,7 +2,7 @@
 
 > A non-custodial Model Context Protocol (MCP) server that gives autonomous AI agents a safe execution gateway to EVM networks and HTTP 402 paywalled APIs.
 
-[![Tests](https://img.shields.io/badge/tests-61%2F61%20passing-brightgreen)](https://github.com/Ishant5436/agent-keeper-mcp)
+[![Tests](https://img.shields.io/badge/tests-63%2F63%20passing-brightgreen)](https://github.com/Ishant5436/agent-keeper-mcp)
 [![CI](https://github.com/Ishant5436/agent-keeper-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Ishant5436/agent-keeper-mcp/actions)
 [![Creditcoin](https://img.shields.io/badge/Creditcoin%203.0-Attestcoin%20Settlement-blue)](src/agent_keeper/creditcoin.py)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
@@ -81,8 +81,8 @@ Add this entry to your `mcp_config.json`:
 {
   "mcpServers": {
     "agent-keeper": {
-      "command": "/Users/ishantpanchal/agent-keeper-mcp/venv/bin/python",
-      "args": ["/Users/ishantpanchal/agent-keeper-mcp/src/agent_keeper/server.py"]
+      "command": "python3",
+      "args": ["-m", "agent_keeper.server"]
     }
   }
 }

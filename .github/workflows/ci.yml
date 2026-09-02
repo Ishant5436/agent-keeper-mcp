@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest mcp eth-account web3
+          pip install -e . pytest
 
-      - name: Run Test Suite (51 Tests)
+      - name: Run Test Suite (63 Tests)
         run: python -m pytest -v
