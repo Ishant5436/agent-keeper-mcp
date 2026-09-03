@@ -14,7 +14,7 @@
 
 Autonomous Large Language Model (LLM) agents operating onchain face a fundamental trilemma: **context credential exposure**, **state desynchronization (nonce collisions)**, and **unhandled HTTP 402 resource gating**. When private keys or RPC URLs are injected into an LLM's conversational context, any unhandled revert or stack trace risks leaking keys into chat logs, prompt caches, or fine-tuning datasets.
 
-`AgentKeeper-MCP` resolves this through a strictly isolated Model Context Protocol (MCP) gateway adhering to Gerard J. Holzmann's Deterministic Safety Invariants. Private keys remain isolated in local non-swappable process memory, while the agent interacts strictly via typed JSON-RPC tools with bounded inputs, EIP-712 structured permits, and cryptographic audit proofs.
+`AgentKeeper-MCP` resolves this through a strictly isolated Model Context Protocol (MCP) gateway adhering to Deterministic Safety Invariants (Power of 10). Private keys remain isolated in local non-swappable process memory, while the agent interacts strictly via typed JSON-RPC tools with bounded inputs, EIP-712 structured permits, and cryptographic audit proofs.
 
 For the **Creditcoin 3.0 ecosystem**, AgentKeeper implements an autonomous **Attestcoin Cross-Chain Solver Escrow Manager**, allowing AI agents on EVM chains (Arbitrum, Base, Mantle, Ethereum) to request cross-chain computational resources and settle solver reimbursements via cryptographic Merkle inclusion proofs.
 

@@ -1,7 +1,6 @@
 """
-Creditcoin 3.0 & Attestcoin Cross-Chain Solver Settlement Module
-Enables autonomous AI agents to verify cross-chain payments and settle Attestcoin intents on Creditcoin EVM.
-Adheres strictly to Gerard J. Holzmann's Power of 10 Safety Invariants.
+Creditcoin 3.0 Attestcoin & Multi-Chain Solver Module
+Adheres strictly to Deterministic Safety Invariants (Power of 10 Rules).
 """
 
 import hashlib

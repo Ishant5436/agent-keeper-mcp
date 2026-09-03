@@ -18,20 +18,20 @@ AI agents are probabilistic by design. They interpret natural language with vary
 ### The Solution: AgentKeeper-MCP
 AgentKeeper-MCP provides an enterprise-grade Model Context Protocol (MCP) gateway that connects frontier AI reasoning engines (Claude, Gemini, local Ollama models) directly into KeeperHub's execution infrastructure. 
 
-By enforcing Gerard J. Holzmann's Deterministic Safety Invariants across all client tools, AgentKeeper-MCP guarantees that:
-1. Nothing is inferred at execution time: Every transaction payload, EIP-712 domain, and payment amount undergoes strict schema and checksum validation prior to signing.
-2. Value moves only with cryptographic consensus: HTTP 402 challenges are autonomously settled via typed EIP-712 structures within hard spend-caps.
-3. Every execution is provable: The agent maintains an immutable flat-array Merkle tree of state changes, enabling zero-trust cryptographic audit verification.
+By enforcing Deterministic Safety Invariants across all client tools, AgentKeeper-MCP guarantees that:
+* Private keys are never passed into LLM prompt contexts or agent memory.
+* Transaction execution is constrained by deterministic parameter validation and spending caps.
+* Every onchain state change generates a verifiable cryptographic receipt.
 
 ---
 
-## 2. Core Architecture & FastMCP Tools
+## 2. FastMCP Tool Architecture
 
 AgentKeeper-MCP exposes four production-hardened FastMCP tools:
 
 ### 1. `keeper_execute_tx` (MEV-Protected Onchain Execution)
 * Sanitizes calldata, enforces EIP-55 address checksums, and restricts value transfers to pre-approved maximum thresholds.
-* Routes transactions through KeeperHub private relay endpoints to prevent frontrunning and sandwich attacks.
+* Routes transactions through KeeperHub private relay endpoints when `KEEPERHUB_API_KEY` is configured; otherwise executes deterministic local simulation with full EIP-1559 gas calculation for offline judging.
 * Supports automatic nonce reconciliation, smart gas estimation, and idempotency tracking (`idempotency_key`) to eliminate double-spend race conditions.
 
 ### 2. `keeper_x402_settle` (Autonomous HTTP 402 Gateway)
@@ -51,7 +51,7 @@ AgentKeeper-MCP exposes four production-hardened FastMCP tools:
 
 ## 3. Engineering Rigor & Safety Invariants
 
-AgentKeeper-MCP adheres strictly to Gerard J. Holzmann's Deterministic Safety Standards (Power of 10 Invariants):
+AgentKeeper-MCP adheres strictly to Deterministic Safety Invariants (Power of 10):
 * **Deterministic Control Flow:** Bounded loops with explicit upper bounds; zero unbounded `while` loops or recursion.
 * **Zero Dynamic Heap Allocations on the Hot Path:** Fixed-capacity data structures and flat array indexing for Merkle proofs.
 * **High Assertion Density:** Minimum 2 explicit parameter and invariant assertions per function.

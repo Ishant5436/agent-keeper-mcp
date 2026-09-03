@@ -1,9 +1,8 @@
 """
-Onchain Relay & Execution Engine
-Implements Gerard J. Holzmann's Power of 10 Safety Invariants Rules:
-- Rule 2: Bounded loops (Max 10 iterations)
-- Rule 5: Minimum 2 assertions per function
-- Rule 7: Check all return values and parameters
+Relay & Nonce-Management Execution Module
+Implements Deterministic Safety Invariants (Power of 10 Rules):
+- Bounded retry loops with exponential backoff.
+- Strict parameter bounds validation.
 """
 
 import time
