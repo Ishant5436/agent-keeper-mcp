@@ -14,7 +14,7 @@
 * **Project Name:** AgentKeeper-MCP
 * **Tagline:** Non-custodial onchain transaction relay, HTTP 402 micro-payments, and Merkle state verification for autonomous AI agents across EVM networks.
 * **Supported Chains:** Ethereum, Base, Arbitrum, Optimism, Mantle, Creditcoin, and Sepolia Testnet.
-* **Test Coverage:** 51/51 Automated Pytest Suite Passing (Unit, White-Box Invariants, Black-Box Contracts & Fuzzing).
+* **Test Coverage:** 67/67 Automated Pytest Suite Passing (Unit, White-Box Invariants, Black-Box Contracts & Fuzzing).
 
 ---
 
