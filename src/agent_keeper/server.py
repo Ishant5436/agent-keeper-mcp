@@ -15,9 +15,11 @@ from mcp.server.fastmcp import FastMCP
 
 from agent_keeper.audit import AuditProofVerifier
 from agent_keeper.config import PUBLIC_RPC_URLS, SUPPORTED_CHAINS
+from agent_keeper.creditcoin import CreditcoinSettlementManager
 from agent_keeper.relay import KeeperRelayClient
 from agent_keeper.schemas import (
     AuditProofRequest,
+    CreditcoinSettlementRequest,
     TxExecutionRequest,
     X402PaymentRequest,
 )
@@ -31,6 +33,7 @@ mcp = FastMCP(
 _audit_verifier = AuditProofVerifier()
 _relay_client = KeeperRelayClient(audit_verifier=_audit_verifier)
 _payment_manager = X402PaymentManager()
+_creditcoin_manager = CreditcoinSettlementManager()
 
 
 def _query_rpc_balance(address: str, chain_id: int) -> dict[str, Any]:
@@ -172,6 +175,42 @@ def keeper_agent_balance(address: str | None = None) -> dict[str, Any]:
         "supported_chains": SUPPORTED_CHAINS,
         "balances": balances,
     }
+
+
+@mcp.tool()
+def keeper_creditcoin_settle(
+    intent_id: str,
+    solver_address: str,
+    source_chain: str,
+    source_tx_hash: str,
+    expected_recipient: str,
+    merkle_proof: list[tuple[str, str]],
+    merkle_root: str,
+) -> dict[str, Any]:
+    """
+    Settle a cross-chain task intent on Creditcoin 3.0 EVM (Chain ID 102031).
+    Cryptographically verifies the source-chain Attestcoin Merkle proof and releases escrow reimbursement to the solver.
+    """
+    req = CreditcoinSettlementRequest(
+        intent_id=intent_id,
+        solver_address=solver_address,
+        source_chain=source_chain,
+        source_tx_hash=source_tx_hash,
+        expected_recipient=expected_recipient,
+        merkle_proof=merkle_proof,
+        merkle_root=merkle_root,
+    )
+
+    receipt = _creditcoin_manager.execute_solver_reimbursement(
+        intent_id=req.intent_id,
+        solver_address=req.solver_address,
+        source_chain=req.source_chain,
+        source_tx_hash=req.source_tx_hash,
+        expected_recipient=req.expected_recipient,
+        merkle_proof=req.merkle_proof,
+        merkle_root=req.merkle_root,
+    )
+    return receipt
 
 
 if __name__ == "__main__":

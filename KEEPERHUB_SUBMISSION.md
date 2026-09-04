@@ -27,7 +27,7 @@ By enforcing Deterministic Safety Invariants across all client tools, AgentKeepe
 
 ## 2. FastMCP Tool Architecture
 
-AgentKeeper-MCP exposes four production-hardened FastMCP tools:
+AgentKeeper-MCP exposes five production-hardened FastMCP tools:
 
 ### 1. `keeper_execute_tx` (MEV-Protected Onchain Execution)
 * Sanitizes calldata, enforces EIP-55 address checksums, and restricts value transfers to pre-approved maximum thresholds.
@@ -47,6 +47,10 @@ AgentKeeper-MCP exposes four production-hardened FastMCP tools:
 * Aggregates real-time native and token balances across 8 EVM networks: Base (8453), Arbitrum (42161), Optimism (10), Creditcoin (1024 / 102031), Mantle (5000), Ethereum (1), and Sepolia (11155111).
 * Enforces isolated budget accounting so autonomous agents cannot exhaust multi-chain operational gas.
 
+### 5. `keeper_creditcoin_settle` (Cross-Chain Intent Settlement)
+* Settle cross-chain task intents on Creditcoin 3.0 EVM (Chain ID 102031).
+* Verifies Attestcoin Merkle proof inclusion in $\mathcal{O}(\log N)$ time and automatically releases locked CTC escrow reimbursement to solvers.
+
 ---
 
 ## 3. Engineering Rigor & Safety Invariants
@@ -56,17 +60,18 @@ AgentKeeper-MCP adheres strictly to Deterministic Safety Invariants (Power of 10
 * **Zero Dynamic Heap Allocations on the Hot Path:** Fixed-capacity data structures and flat array indexing for Merkle proofs.
 * **High Assertion Density:** Minimum 2 explicit parameter and invariant assertions per function.
 * **Smallest Scope:** Strictly localized variable scopes and immutable schemas.
-* **Full Test Coverage:** 67/67 automated tests passing across unit, white-box invariant, and 5,000-case Hypothesis property-based fuzz test suites.
+* **Full Test Coverage:** 70/70 automated tests passing across unit, white-box invariant, and 5,000-case Hypothesis property-based fuzz test suites.
 
 ---
 
 ## 4. Verification & Live Execution Commands
 
-### Run the Full Automated Test Suite (67/67 Passing)
+### Run the Full Automated Test Suite (70/70 Passing)
 ```bash
 git clone https://github.com/Ishant5436/agent-keeper-mcp.git
 cd agent-keeper-mcp
-python3 -m pytest -v
+make test
+make demo
 ```
 
 ### Run the Interactive Autonomous Live Demo

@@ -2,7 +2,7 @@
 
 > A non-custodial Model Context Protocol (MCP) server that gives autonomous AI agents a safe execution gateway to EVM networks and HTTP 402 paywalled APIs.
 
-[![Tests](https://img.shields.io/badge/tests-67%2F67%20passing-brightgreen)](https://github.com/Ishant5436/agent-keeper-mcp)
+[![Tests](https://img.shields.io/badge/tests-70%2F70%20passing-brightgreen)](https://github.com/Ishant5436/agent-keeper-mcp)
 [![CI](https://github.com/Ishant5436/agent-keeper-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Ishant5436/agent-keeper-mcp/actions)
 [![Creditcoin](https://img.shields.io/badge/Creditcoin%203.0-Attestcoin%20Settlement-blue)](src/agent_keeper/creditcoin.py)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
@@ -27,7 +27,7 @@ If you give an autonomous agent (Claude, Gemini, Cursor) direct access to an RPC
 
 ## The Solution: Guarded Gateway Architecture
 
-AgentKeeper sits as a local middleware between the LLM runtime and blockchain networks. Private keys stay isolated in local memory, while the agent interacts solely through four bounded tools:
+AgentKeeper sits as a local middleware between the LLM runtime and blockchain networks. Private keys stay isolated in local memory, while the agent interacts solely through five bounded tools:
 
 ```
 ┌────────────────────────────────────────────────────────┐
@@ -42,6 +42,7 @@ AgentKeeper sits as a local middleware between the LLM runtime and blockchain ne
 │  [2] keeper_x402_settle    ───►  EIP-712 Spend Budget  │
 │  [3] keeper_audit_verify   ───►  Merkle Proof Engine   │
 │  [4] keeper_agent_balance  ───►  Multi-Chain Balances  │
+│  [5] keeper_creditcoin_settle ►  Attestcoin L1 Escrow  │
 └──────────────┬───────────────────────────┬─────────────┘
                │                           │
                ▼                           ▼
@@ -68,6 +69,11 @@ AgentKeeper sits as a local middleware between the LLM runtime and blockchain ne
 * Allows agents to independently audit state proofs before triggering downstream dependent actions.
 
 ### 4. Multi-Chain Budgeting (`keeper_agent_balance`)
+* Real-time multi-chain RPC balance queries across Base, Arbitrum, Ethereum, and Creditcoin.
+
+### 5. Creditcoin 3.0 Attestcoin Intent Settlement (`keeper_creditcoin_settle`)
+* Cryptographically verifies source-chain fulfillment receipts against on-chain Merkle roots using `FlatMerkleTree` in $\mathcal{O}(\log N)$ time.
+* Releases locked Creditcoin CTC escrow collateral directly to solvers upon valid cryptographic proof.
 * Real-time balance and gas headroom tracking across EVM chains (Arbitrum, Base, Mantle, Creditcoin).
 
 ---

@@ -67,8 +67,37 @@ def main():
     audit_res = keeper_audit_verify(tx_hash=tx_res.get("tx_hash"), chain_id=8453)
     print(json.dumps(audit_res, indent=2))
 
+    # 5. Creditcoin 3.0 Attestcoin Intent Settlement
+    print_step("Step 5: Settle Cross-Chain Intent on Creditcoin 3.0 EVM (Chain ID 102031)")
+    from agent_keeper.server import keeper_creditcoin_settle, _creditcoin_manager
+    from agent_keeper.merkle_tree import FlatMerkleTree
+
+    intent_id = "ctc_intent_alpha_001"
+    solver_addr = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
+    src_chain = "base"
+    src_tx = tx_res.get("tx_hash", "0x" + "1"*64)
+    recip = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+
+    leaf = f"{intent_id}:{src_chain}:{src_tx}:{recip}"
+    tree = FlatMerkleTree([leaf, "intent_dummy_002", "intent_dummy_003"])
+    proof = tree.get_proof(0)
+
+    # Register escrow collateral on Creditcoin L1
+    _creditcoin_manager.register_escrow(intent_id, solver_addr, 1500.0)
+
+    ctc_settle = keeper_creditcoin_settle(
+        intent_id=intent_id,
+        solver_address=solver_addr,
+        source_chain=src_chain,
+        source_tx_hash=src_tx,
+        expected_recipient=recip,
+        merkle_proof=proof,
+        merkle_root=tree.root,
+    )
+    print(json.dumps(ctc_settle, indent=2))
+
     print("\n" + "#" * 70)
-    print("[SUCCESS]  All 4 Autonomous Onchain Workflows Verified Successfully!")
+    print("[SUCCESS]  All 5 Autonomous Onchain Workflows Verified Successfully!")
     print("#" * 70 + "\n")
 
 

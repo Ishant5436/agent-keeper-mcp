@@ -35,14 +35,15 @@ For the **Creditcoin 3.0 ecosystem**, AgentKeeper implements an autonomous **Att
 │             │                          │                          │               │
 │             ▼                          ▼                          ▼               │
 │  ┌─────────────────────────────────────────────────────────────────────────────┐  │
-│  │ Creditcoin 3.0 Attestcoin Solver & Multi-Chain Relay (Chain ID 1024/102031) │  │
+│  │ [4] keeper_agent_balance    │ [5] keeper_creditcoin_settle                  │  │
+│  │ Multi-Chain RPC Budget      │ Attestcoin Merkle O(log N) Solver Settlement  │  │
 │  └─────────────────────────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────┬─────────────────────────────────────────┘
                                           │
                   ┌───────────────────────┴───────────────────────┐
                   ▼                                               ▼
-     EVM Networks (Base, OP, Mantle)               HTTP 402 Paywalled Resources
-   (Onchain Contract Execution)                     (Per-Token Data Feeds)
+     EVM Networks (Base, OP, Mantle)               Creditcoin 3.0 L1 / x402 APIs
+   (Onchain Contract Execution)                     (Attestcoin Solver Settlement)
 ```
 
 ---
@@ -60,7 +61,8 @@ Every core data structure in `AgentKeeper-MCP` is engineered with explicit time 
 │                            │ Verification: O(log N)      │                          │ Zero recursive call stack frame allocations.           │
 ├────────────────────────────┼─────────────────────────────┼──────────────────────────┼────────────────────────────────────────────────────────┤
 │ 2. `CreditcoinSolver`      │ Intent Registration: O(1)   │ Bounded Capacity:        │ Ring-buffer circular eviction cap (2,048 intents);     │
-│                            │ Settlement Lookup: O(1)     │ O(MAX_CAPACITY)          │ Double-spend prevention via terminal state machine.    │
+│                            │ Proof Verification: O(log N)│ O(MAX_CAPACITY)          │ Merkle inclusion proof traversal;                      │
+│                            │ Settlement Lookup: O(1)     │                          │ Double-spend prevention via terminal state machine.    │
 ├────────────────────────────┼─────────────────────────────┼──────────────────────────┼────────────────────────────────────────────────────────┤
 │ 3. `RelayIdempotencyCache` │ Key Hash Lookup: O(1)       │ Bounded Entry Cap:       │ SHA-256 seed hashing; prevents duplicate broadcasts   │
 │                            │ Expiration Eviction: O(1)   │ O(K)                     │ during RPC timeouts or fee spikes (TTL = 300s).        │
@@ -85,7 +87,7 @@ Rule 3: Deterministic Memory       | Bounded memory structures          | MAX_IN
 Rule 4: Function Length            | <= 60 lines per routine            | Modular helpers; zero monolithic routines.
 Rule 5: Assertion Density          | >= 2 assertions per function       | Pre-condition & post-condition validation in every unit.
 Rule 7: Check Returns & Parameters | Strict input validation            | EIP-55 checksum, calldata byte limits (128KB), wei caps.
-Rule 10: Static Analysis & Tests   | 100% test pass rate, 0 warnings   | 67/67 passing test suite (including 5,000-case Hypothesis property-based fuzz tests).
+Rule 10: Static Analysis & Tests   | 100% test pass rate, 0 warnings   | 70/70 passing test suite (including 5,000-case Hypothesis property-based fuzz tests).
 ```
 
 ---
@@ -93,7 +95,7 @@ Rule 10: Static Analysis & Tests   | 100% test pass rate, 0 warnings   | 67/67 p
 ## 4. Creditcoin 3.0 Track Alignment
 
 `AgentKeeper-MCP` natively supports both **Creditcoin Mainnet (Chain ID 1024)** and **Creditcoin Testnet (Chain ID 102031)**:
-* **Attestcoin Proof Settlement:** Validates that cross-chain solver tasks initiated on L2s (Arbitrum, Base, Mantle) are cryptographically matched to valid transaction hashes before releasing escrowed funds.
+* **Attestcoin Proof Settlement (`keeper_creditcoin_settle`):** Validates that cross-chain solver tasks initiated on L2s (Arbitrum, Base, Mantle) are cryptographically matched to valid transaction hashes via real Merkle branch proofs before releasing escrowed CTC funds.
 * **Non-Custodial Architecture:** Solvers receive programmatic EIP-712 payment promises that can be verified and claimed onchain without human coordinator intervention.
 * **Deterministic Accounting:** Bounded state tracking guarantees that solver balances and fees remain fully solvent under high-throughput request loads.
 
@@ -106,18 +108,18 @@ Rule 10: Static Analysis & Tests   | 100% test pass rate, 0 warnings   | 67/67 p
 git clone https://github.com/Ishant5436/agent-keeper-mcp.git
 cd agent-keeper-mcp
 
-# 2. Execute Automated Test Suite (67 Tests Passing in <2.0s)
+# 2. Execute Automated Test Suite (70 Tests Passing in <2.0s)
 make test
 
 # 3. Run Interactive Demonstrator
-python3 demo.py
+make demo
 ```
 
 ### Verification Telemetry Output:
 ```
-============================== 67 passed in 1.95s ==============================
+============================== 70 passed in 1.95s ==============================
 [SUCCESS] FlatMerkleTree: O(log N) inclusion proofs verified
 [SUCCESS] Creditcoin 3.0: Attestcoin solver escrow & reimbursement confirmed
 [SUCCESS] EIP-712: MicroPaymentPermit signed within daily allowance ($10.00)
-[SUCCESS] FastMCP: 4 tool interfaces active with Power of 10 safety invariants
+[SUCCESS] FastMCP: 5 tool interfaces active with Power of 10 safety invariants
 ```

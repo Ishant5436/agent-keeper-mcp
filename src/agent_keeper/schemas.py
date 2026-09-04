@@ -169,3 +169,39 @@ class AuditProofResponse(BaseModel):
     confirmations: int = 0
     execution_trace: dict[str, Any] | None = None
     error: str | None = None
+
+
+class CreditcoinSettlementRequest(BaseModel):
+    """Creditcoin 3.0 Attestcoin intent settlement request."""
+
+    intent_id: str = Field(..., min_length=1, max_length=128, description="Unique intent identifier.")
+    solver_address: str = Field(..., description="EIP-55 solver address claiming reimbursement.")
+    source_chain: str = Field(..., min_length=1, max_length=64, description="Source chain name.")
+    source_tx_hash: str = Field(..., description="0x-prefixed 32-byte transaction hash on source chain.")
+    expected_recipient: str = Field(..., description="EIP-55 recipient address on source chain.")
+    merkle_proof: list[tuple[str, str]] = Field(..., description="Merkle proof tuples (sibling_hash, 'left'|'right').")
+    merkle_root: str = Field(..., description="0x-prefixed 32-byte Merkle root on Creditcoin.")
+
+    @field_validator("solver_address", "expected_recipient")
+    @classmethod
+    def check_addresses(cls, v: str) -> str:
+        return validate_strict_eip55(v)
+
+    @field_validator("source_tx_hash", "merkle_root")
+    @classmethod
+    def check_hashes(cls, v: str) -> str:
+        assert v.startswith("0x") and len(v) == 66, "Hash must be 0x-prefixed 32-byte hex string (66 chars)"
+        assert bool(HEX_REGEX.match(v)), "Hash must be valid hex"
+        return v
+
+
+class CreditcoinSettlementResponse(BaseModel):
+    success: bool
+    intent_id: str
+    solver: str | None = None
+    amount_ctc_released: float | None = None
+    source_chain: str | None = None
+    source_tx_hash: str | None = None
+    merkle_root: str | None = None
+    chain_id: int = 102031
+    error: str | None = None
