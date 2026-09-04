@@ -11,7 +11,6 @@ from agent_keeper.audit import AuditProofVerifier
 from agent_keeper.config import MAX_CALLDATA_BYTES, MAX_VALUE_WEI_CAP, SUPPORTED_CHAINS
 from agent_keeper.relay import KeeperRelayClient
 from agent_keeper.schemas import (
-    AuditProofRequest,
     TxExecutionRequest,
     X402PaymentRequest,
 )

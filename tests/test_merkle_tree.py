@@ -2,7 +2,6 @@
 Unit tests for Flat Array Merkle Tree engine.
 """
 
-import pytest
 from agent_keeper.merkle_tree import FlatMerkleTree
 
 

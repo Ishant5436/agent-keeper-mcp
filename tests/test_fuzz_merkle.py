@@ -11,7 +11,6 @@ Targets the two safety properties that matter for a Merkle audit primitive:
      and never raise.
 """
 
-import string
 
 from hypothesis import assume, given, settings, strategies as st
 from hypothesis import HealthCheck
