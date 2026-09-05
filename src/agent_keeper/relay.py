@@ -68,7 +68,12 @@ class KeeperRelayClient:
                 continue
 
             try:
-                # If real live API key is set, forward to live KeeperHub REST Relay
+                # If real live API key is set, forward to live KeeperHub REST Relay.
+                # A configured key means the caller expects a real broadcast, so a
+                # non-200 response is a genuine failure for this attempt - it must
+                # never silently fall through to the local simulation below, which
+                # would fabricate a "CONFIRMED" result for a transaction that was
+                # never actually relayed anywhere.
                 if self.api_key:
                     with httpx.Client(timeout=DEFAULT_REQUEST_TIMEOUT) as client:
                         headers = {
@@ -105,7 +110,16 @@ class KeeperRelayClient:
                                 self._idempotency_cache[req.idempotency_key] = response
                             return response
 
+                        last_error = (
+                            f"KeeperHub relay returned HTTP {resp.status_code}: "
+                            f"{resp.text[:200]}"
+                        )
+                        current_nonce += 1
+                        time.sleep(0.05)
+                        continue
+
                 # Local Deterministic Cryptographic Execution Simulation
+                # (only reached when no live API key is configured at all)
                 tx_hash = self._compute_tx_hash(req, current_nonce)
                 gas_used = 42000 if len(req.calldata_hex) > 2 else 21000
                 eff_gas_price = 1.5 if req.chain_id == 8453 else 25.0
