@@ -52,25 +52,12 @@ For the **Creditcoin 3.0 ecosystem**, AgentKeeper implements an autonomous **Att
 
 Every core data structure in `AgentKeeper-MCP` is engineered with explicit time and space invariants:
 
-```
-┌────────────────────────────┬─────────────────────────────┬──────────────────────────┬────────────────────────────────────────────────────────┐
-│ Algorithmic Component      │ Time Complexity             │ Space Complexity         │ Operational & Invariant Guarantee                      │
-├────────────────────────────┼─────────────────────────────┼──────────────────────────┼────────────────────────────────────────────────────────┤
-│ 1. `FlatMerkleTree`        │ Construction: O(N)          │ Auxiliary: O(N)          │ Complete binary tree in flat contiguous array;          │
-│                            │ Proof Generation: O(log N)  │ Proof Size: O(log N)     │ Bitwise parent/sibling traversal ((i-1)>>1);           │
-│                            │ Verification: O(log N)      │                          │ Zero recursive call stack frame allocations.           │
-├────────────────────────────┼─────────────────────────────┼──────────────────────────┼────────────────────────────────────────────────────────┤
-│ 2. `CreditcoinSolver`      │ Intent Registration: O(1)   │ Bounded Capacity:        │ Ring-buffer circular eviction cap (2,048 intents);     │
-│                            │ Proof Verification: O(log N)│ O(MAX_CAPACITY)          │ Merkle inclusion proof traversal;                      │
-│                            │ Settlement Lookup: O(1)     │                          │ Double-spend prevention via terminal state machine.    │
-├────────────────────────────┼─────────────────────────────┼──────────────────────────┼────────────────────────────────────────────────────────┤
-│ 3. `RelayIdempotencyCache` │ Key Hash Lookup: O(1)       │ Bounded Entry Cap:       │ SHA-256 seed hashing; prevents duplicate broadcasts   │
-│                            │ Expiration Eviction: O(1)   │ O(K)                     │ during RPC timeouts or fee spikes (TTL = 300s).        │
-├────────────────────────────┼─────────────────────────────┼──────────────────────────┼────────────────────────────────────────────────────────┤
-│ 4. `X402PaymentManager`    │ EIP-712 Signing: O(1)       │ Fixed State: O(1)        │ Monotonic cumulative budget invariant:                 │
-│                            │ Budget Verification: O(1)   │                          │ S_{t} = S_{t-1} + Delta <= S_{max}.                    │
-└────────────────────────────┴─────────────────────────────┴──────────────────────────┴────────────────────────────────────────────────────────┘
-```
+| Algorithmic Component | Time Complexity | Space Complexity | Operational & Invariant Guarantee |
+| :--- | :--- | :--- | :--- |
+| **1. `FlatMerkleTree`** | Construction: O(N)<br>Proof Gen: O(log N)<br>Verification: O(log N) | Auxiliary: O(N)<br>Proof Size: O(log N) | Complete binary tree in flat contiguous array; bitwise parent/sibling traversal `((i-1)>>1)`; zero recursive stack frames. |
+| **2. `CreditcoinSolver`** | Registration: O(1)<br>Verification: O(log N)<br>Settlement: O(1) | Bounded Capacity:<br>O(MAX_CAPACITY) | Ring-buffer circular eviction cap (2,048 intents); Merkle inclusion proof traversal; terminal double-spend prevention. |
+| **3. `RelayIdempotencyCache`** | Lookup: O(1)<br>Eviction: O(1) | Bounded Entry Cap:<br>O(K) | SHA-256 seed hashing; prevents duplicate broadcasts during RPC timeouts or fee spikes (TTL = 300s). |
+| **4. `X402PaymentManager`** | Signing: O(1)<br>Verification: O(1) | Fixed State: O(1) | Monotonic cumulative budget invariant: S_t = S_{t-1} + Delta <= S_{max}. |
 
 ---
 
@@ -78,17 +65,15 @@ Every core data structure in `AgentKeeper-MCP` is engineered with explicit time 
 
 The implementation strictly satisfies the Power of 10 Safety Invariants:
 
-```
-INVARIANT                          | STANDARD ENFORCED                  | IMPLEMENTATION EVIDENCE
------------------------------------|------------------------------------|-------------------------------------------------------
-Rule 1: Simple Control Flow        | Zero recursion, zero longjmp       | Flat array iteration; iterative Merkle proof build.
-Rule 2: Bounded Loops              | Fixed upper bounds on all loops    | Retry loops bounded at max_retries=3; Merkle depth <= 64.
-Rule 3: Deterministic Memory       | Bounded memory structures          | MAX_INTENTS_CAPACITY = 2048; FIFO eviction limits.
-Rule 4: Function Length            | <= 60 lines per routine            | Modular helpers; zero monolithic routines.
-Rule 5: Assertion Density          | >= 2 assertions per function       | Pre-condition & post-condition validation in every unit.
-Rule 7: Check Returns & Parameters | Strict input validation            | EIP-55 checksum, calldata byte limits (128KB), wei caps.
-Rule 10: Static Analysis & Tests   | 100% test pass rate, 0 warnings   | 72/72 passing test suite (including 5,000-case Hypothesis property-based fuzz tests).
-```
+| Invariant | Standard Enforced | Implementation Evidence |
+| :--- | :--- | :--- |
+| **Rule 1: Simple Control Flow** | Zero recursion, zero longjmp | Flat array iteration; iterative Merkle proof build. |
+| **Rule 2: Bounded Loops** | Fixed upper bounds on all loops | Retry loops bounded at `max_retries=3`; Merkle depth <= 64. |
+| **Rule 3: Deterministic Memory** | Bounded memory structures | `MAX_INTENTS_CAPACITY = 2048`; FIFO eviction limits. |
+| **Rule 4: Function Length** | <= 60 lines per routine | Modular helpers; zero monolithic routines. |
+| **Rule 5: Assertion Density** | >= 2 assertions per function | Pre-condition & post-condition validation in every unit. |
+| **Rule 7: Check Returns & Parameters** | Strict input validation | EIP-55 checksum, calldata byte limits (128KB), wei caps. |
+| **Rule 10: Static Analysis & Tests** | 100% test pass rate, 0 warnings | 72/72 passing test suite (including 5,000-case Hypothesis property-based fuzz tests). |
 
 ---
 
