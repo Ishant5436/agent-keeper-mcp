@@ -60,13 +60,13 @@ AgentKeeper-MCP adheres strictly to Deterministic Safety Invariants (Power of 10
 * **Zero Dynamic Heap Allocations on the Hot Path:** Fixed-capacity data structures and flat array indexing for Merkle proofs.
 * **High Assertion Density:** Minimum 2 explicit parameter and invariant assertions per function.
 * **Smallest Scope:** Strictly localized variable scopes and immutable schemas.
-* **Full Test Coverage:** 70/70 automated tests passing across unit, white-box invariant, and 5,000-case Hypothesis property-based fuzz test suites.
+* **Full Test Coverage:** 98/98 automated tests passing across unit, white-box invariant, and 5,000-case Hypothesis property-based fuzz test suites.
 
 ---
 
 ## 4. Verification & Live Execution Commands
 
-### Run the Full Automated Test Suite (70/70 Passing)
+### Run the Full Automated Test Suite (98/98 Passing)
 ```bash
 git clone https://github.com/Ishant5436/agent-keeper-mcp.git
 cd agent-keeper-mcp
