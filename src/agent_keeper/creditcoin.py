@@ -74,7 +74,7 @@ class CreditcoinSettlementManager:
 
         # Construct standardized leaf receipt payload
         leaf_payload = f"{intent_id}:{source_chain}:{source_tx_hash}:{expected_recipient}"
-        
+
         # Verify inclusion against on-chain Merkle root in O(log N) time
         return FlatMerkleTree.verify_proof(leaf_payload, merkle_proof, merkle_root)
 

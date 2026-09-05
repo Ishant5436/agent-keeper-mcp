@@ -14,7 +14,7 @@ def _create_mock_merkle_context():
     source_chain = "ethereum"
     tx_hash = "0x" + "a" * 64
     recipient = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
-    
+
     target_leaf = f"{intent_id}:{source_chain}:{tx_hash}:{recipient}"
     other_leaves = [
         "intent_120:base:0x" + "1"*64 + ":0xd8da6bf26964af9d7eed9e03e53415d37aa96045",
@@ -23,7 +23,7 @@ def _create_mock_merkle_context():
         target_leaf
     ]
     tree = FlatMerkleTree(other_leaves)
-    proof = tree.get_proof(3) # Index of target_leaf
+    proof = tree.get_proof(3)  # Index of target_leaf
     return intent_id, source_chain, tx_hash, recipient, proof, tree.root
 
 
@@ -60,7 +60,7 @@ def test_register_escrow_invalid_solver_address_fails():
 def test_verify_attestcoin_proof_valid_merkle():
     mgr = CreditcoinSettlementManager()
     intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
-    
+
     is_valid = mgr.verify_attestcoin_proof(
         intent_id=intent_id,
         source_chain=chain,
@@ -76,7 +76,7 @@ def test_verify_attestcoin_proof_tampered_tx_hash():
     mgr = CreditcoinSettlementManager()
     intent_id, chain, _, recip, proof, root = _create_mock_merkle_context()
     tampered_tx = "0x" + "f" * 64
-    
+
     is_valid = mgr.verify_attestcoin_proof(
         intent_id=intent_id,
         source_chain=chain,
@@ -93,7 +93,7 @@ def test_verify_attestcoin_proof_corrupted_sibling():
     intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
     # Corrupt sibling hash
     corrupted_proof = [("0x" + "0"*64, proof[0][1])] + proof[1:]
-    
+
     is_valid = mgr.verify_attestcoin_proof(
         intent_id=intent_id,
         source_chain=chain,
@@ -108,17 +108,24 @@ def test_verify_attestcoin_proof_corrupted_sibling():
 def test_verify_attestcoin_proof_invalid_tx_hash_format():
     mgr = CreditcoinSettlementManager()
     with pytest.raises(AssertionError):
-        mgr.verify_attestcoin_proof("intent_123", "ethereum", "0xShortHash", "0x742d35Cc6634C0532925a3b844Bc454e4438f44e", [], "0x" + "b" * 64)
+        mgr.verify_attestcoin_proof(
+            "intent_123",
+            "ethereum",
+            "0xShortHash",
+            "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+            [],
+            "0x" + "b" * 64,
+        )
 
 
 def test_execute_solver_reimbursement_success():
     mgr = CreditcoinSettlementManager()
     intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
     solver = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
-    
+
     mgr.register_escrow(intent_id, solver, 250.0)
     assert mgr.get_escrow_balance(intent_id) == 250.0
-    
+
     receipt = mgr.execute_solver_reimbursement(
         intent_id=intent_id,
         solver_address=solver,
@@ -139,7 +146,7 @@ def test_execute_solver_reimbursement_rejected_on_invalid_proof():
     intent_id, chain, _, recip, proof, root = _create_mock_merkle_context()
     solver = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
     tampered_tx = "0x" + "e" * 64
-    
+
     mgr.register_escrow(intent_id, solver, 250.0)
     receipt = mgr.execute_solver_reimbursement(
         intent_id=intent_id,
@@ -221,4 +228,3 @@ def test_execute_solver_reimbursement_unanchored_merkle_root_rejected():
     assert receipt["success"] is False
     assert "Unanchored Merkle root" in receipt["error"]
     assert mgr.get_escrow_balance(intent_id) == 300.0
-

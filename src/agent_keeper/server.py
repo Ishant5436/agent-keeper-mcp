@@ -27,7 +27,10 @@ from agent_keeper.x402 import X402PaymentManager
 
 mcp = FastMCP(
     "agent-keeper",
-    instructions="Autonomous onchain transaction gateway, x402 micro-payment solver, and cryptographic audit verification protocol for KeeperHub.",
+    instructions=(
+        "Autonomous onchain transaction gateway, x402 micro-payment solver, "
+        "and cryptographic audit verification protocol for KeeperHub."
+    ),
 )
 
 _audit_verifier = AuditProofVerifier()

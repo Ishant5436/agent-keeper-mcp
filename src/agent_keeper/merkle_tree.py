@@ -33,7 +33,7 @@ class FlatMerkleTree:
         while len(current) > 1:
             if len(current) % 2 != 0:
                 current = current + [current[-1]]  # Duplicate odd tail
-            
+
             next_layer = []
             for i in range(0, len(current), 2):
                 combined = current[i] + current[i + 1]

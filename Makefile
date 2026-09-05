@@ -9,7 +9,7 @@ demo:
 	python3 demo.py
 
 lint:
-	python3 -m flake8 src/ tests/ --count --max-line-length=120 --statistics || true
+	uv run --with flake8 python -m flake8 src/ tests/ --count --max-line-length=120 --statistics
 
 clean:
 	rm -rf __pycache__ .pytest_cache

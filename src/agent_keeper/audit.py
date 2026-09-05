@@ -71,7 +71,10 @@ class AuditProofVerifier:
         if tamper_proof or (identifier not in self._committed_leaves):
             return AuditProofResponse(
                 verified=False,
-                error=f"Merkle inclusion proof failed: '{identifier}' is not committed in onchain state root ({self._state_root})",
+                error=(
+                    f"Merkle inclusion proof failed: '{identifier}' is not committed "
+                    f"in onchain state root ({self._state_root})"
+                ),
             )
 
         leaf_hash = "0x" + keccak(identifier.encode("utf-8")).hex()

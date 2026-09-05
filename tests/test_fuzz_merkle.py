@@ -19,7 +19,10 @@ from agent_keeper.merkle_tree import FlatMerkleTree
 
 # Leaf content: printable text including empty strings and unicode, so the
 # fuzzer isn't just hashing distinct ASCII words.
-leaf_text = st.text(alphabet=st.characters(min_codepoint=0, max_codepoint=0x2FFFF, blacklist_categories=("Cs",)), max_size=40)
+leaf_text = st.text(
+    alphabet=st.characters(min_codepoint=0, max_codepoint=0x2FFFF, blacklist_categories=("Cs",)),
+    max_size=40,
+)
 
 # Leaf lists: 1-64 leaves. Bounded above to keep 5,000 examples tractable;
 # still exercises every odd/even duplicate-tail topology up to a 6-layer tree.
