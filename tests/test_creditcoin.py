@@ -3,6 +3,8 @@ Unit & White-Box Tests for Creditcoin & Attestcoin Solver Settlement Module
 Verifies O(log N) Merkle Proof Cryptographic Inclusion and Escrow Life Cycle.
 """
 
+import json
+import httpx
 import pytest
 from agent_keeper.creditcoin import CreditcoinSettlementManager, CREDITCOIN_CHAIN_ID
 from agent_keeper.merkle_tree import FlatMerkleTree
@@ -256,16 +258,287 @@ def test_execute_solver_reimbursement_unanchored_root_rejected_on_fresh_manager(
     assert mgr.get_escrow_balance(intent_id) == 400.0
 
 
-def test_oracle_rpc_dynamic_anchoring_success(monkeypatch):
-    """Verify that when RPC oracle confirms the root, it dynamically anchors and releases escrow."""
+def _make_rpc_transport(
+    receipt_result=None,
+    block_result=None,
+    latest_block_result=None,
+    receipt_status_code=200,
+    block_status_code=200,
+    call_log=None,
+):
+    """Factory creating an in-memory httpx.MockTransport simulating EVM JSON-RPC responses."""
+    def handler(request: httpx.Request) -> httpx.Response:
+        data = json.loads(request.content.decode("utf-8"))
+        method = data.get("method")
+        if call_log is not None:
+            call_log.append((method, data.get("params")))
+
+        if method == "eth_getTransactionReceipt":
+            if receipt_status_code != 200:
+                return httpx.Response(receipt_status_code, json={"error": "RPC Error"})
+            return httpx.Response(200, json={"jsonrpc": "2.0", "result": receipt_result, "id": data.get("id")})
+        elif method == "eth_getBlockByHash":
+            if block_status_code != 200:
+                return httpx.Response(block_status_code, json={"error": "Block Error"})
+            return httpx.Response(200, json={"jsonrpc": "2.0", "result": block_result, "id": data.get("id")})
+        elif method == "eth_getBlockByNumber":
+            return httpx.Response(200, json={"jsonrpc": "2.0", "result": latest_block_result, "id": data.get("id")})
+        return httpx.Response(404, json={"error": f"Unknown method: {method}"})
+
+    return httpx.MockTransport(handler)
+
+
+# ==============================================================================
+# 1. DIRECT UNIT TESTS FOR _query_oracle_rpc & HELPERS
+# ==============================================================================
+
+def test_query_oracle_rpc_matching_receipts_root_direct():
+    """Unit: _query_oracle_rpc directly returns True when root matches block receiptsRoot."""
+    intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
+    transport = _make_rpc_transport(
+        receipt_result={"status": "0x1", "blockHash": "0x" + "b" * 64},
+        block_result={"receiptsRoot": root, "stateRoot": "0x" + "0" * 64, "transactionsRoot": "0x" + "0" * 64},
+    )
+    mgr = CreditcoinSettlementManager(bootstrap_defaults=False, transport=transport)
+    assert mgr._query_oracle_rpc(chain, root, source_tx_hash=tx_hash) is True
+
+
+def test_query_oracle_rpc_matching_state_root_direct():
+    """Unit: _query_oracle_rpc directly returns True when root matches block stateRoot."""
+    intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
+    transport = _make_rpc_transport(
+        receipt_result={"status": "0x1", "blockHash": "0x" + "b" * 64},
+        block_result={"receiptsRoot": "0x" + "0" * 64, "stateRoot": root, "transactionsRoot": "0x" + "0" * 64},
+    )
+    mgr = CreditcoinSettlementManager(bootstrap_defaults=False, transport=transport)
+    assert mgr._query_oracle_rpc(chain, root, source_tx_hash=tx_hash) is True
+
+
+def test_query_oracle_rpc_matching_transactions_root_direct():
+    """Unit: _query_oracle_rpc directly returns True when root matches block transactionsRoot."""
+    intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
+    transport = _make_rpc_transport(
+        receipt_result={"status": "0x1", "blockHash": "0x" + "b" * 64},
+        block_result={"receiptsRoot": "0x" + "0" * 64, "stateRoot": "0x" + "0" * 64, "transactionsRoot": root},
+    )
+    mgr = CreditcoinSettlementManager(bootstrap_defaults=False, transport=transport)
+    assert mgr._query_oracle_rpc(chain, root, source_tx_hash=tx_hash) is True
+
+
+def test_query_oracle_rpc_mismatched_root_direct():
+    """Unit: _query_oracle_rpc returns False when block roots do not match candidate Merkle root."""
+    intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
+    transport = _make_rpc_transport(
+        receipt_result={"status": "0x1", "blockHash": "0x" + "b" * 64},
+        block_result={
+            "receiptsRoot": "0x" + "1" * 64,
+            "stateRoot": "0x" + "2" * 64,
+            "transactionsRoot": "0x" + "3" * 64,
+        },
+    )
+    mgr = CreditcoinSettlementManager(bootstrap_defaults=False, transport=transport)
+    assert mgr._query_oracle_rpc(chain, root, source_tx_hash=tx_hash) is False
+
+
+def test_query_oracle_rpc_reverted_tx_receipt_direct():
+    """Unit: _query_oracle_rpc returns False when transaction status is 0x0 (reverted)."""
+    intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
+    transport = _make_rpc_transport(
+        receipt_result={"status": "0x0", "blockHash": "0x" + "b" * 64},
+    )
+    mgr = CreditcoinSettlementManager(bootstrap_defaults=False, transport=transport)
+    assert mgr._query_oracle_rpc(chain, root, source_tx_hash=tx_hash) is False
+
+
+def test_query_oracle_rpc_missing_receipt_direct():
+    """Unit: _query_oracle_rpc returns False when transaction receipt is null."""
+    intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
+    transport = _make_rpc_transport(receipt_result=None)
+    mgr = CreditcoinSettlementManager(bootstrap_defaults=False, transport=transport)
+    assert mgr._query_oracle_rpc(chain, root, source_tx_hash=tx_hash) is False
+
+
+def test_query_oracle_rpc_missing_block_direct():
+    """Unit: _query_oracle_rpc returns False when block is not found."""
+    intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
+    transport = _make_rpc_transport(
+        receipt_result={"status": "0x1", "blockHash": "0x" + "b" * 64},
+        block_result=None,
+    )
+    mgr = CreditcoinSettlementManager(bootstrap_defaults=False, transport=transport)
+    assert mgr._query_oracle_rpc(chain, root, source_tx_hash=tx_hash) is False
+
+
+def test_query_oracle_rpc_http_500_error_direct():
+    """Unit: _query_oracle_rpc gracefully returns False on HTTP 500 error."""
+    intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
+    transport = _make_rpc_transport(receipt_status_code=500)
+    mgr = CreditcoinSettlementManager(bootstrap_defaults=False, transport=transport)
+    assert mgr._query_oracle_rpc(chain, root, source_tx_hash=tx_hash) is False
+
+
+def test_query_oracle_rpc_transport_exception_direct():
+    """Unit: _query_oracle_rpc gracefully returns False on transport network exceptions."""
+    intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
+
+    def error_handler(request: httpx.Request):
+        raise httpx.ConnectTimeout("Connection to RPC timed out")
+
+    mgr = CreditcoinSettlementManager(bootstrap_defaults=False, transport=httpx.MockTransport(error_handler))
+    assert mgr._query_oracle_rpc(chain, root, source_tx_hash=tx_hash) is False
+
+
+def test_query_oracle_rpc_malformed_tx_hash_direct():
+    """Unit: _query_oracle_rpc returns False for invalid or non-66-character tx hash strings."""
+    _, chain, _, _, _, root = _create_mock_merkle_context()
     mgr = CreditcoinSettlementManager(bootstrap_defaults=False)
+    assert mgr._query_oracle_rpc(chain, root, source_tx_hash="0xshort") is False
+    assert mgr._query_oracle_rpc(chain, root, source_tx_hash="not_hex") is False
+
+
+def test_query_oracle_rpc_unsupported_chain_direct():
+    """Unit: _query_oracle_rpc returns False for unregistered source chains."""
+    _, _, tx_hash, _, _, root = _create_mock_merkle_context()
+    mgr = CreditcoinSettlementManager(bootstrap_defaults=False)
+    assert mgr._query_oracle_rpc("solana", root, source_tx_hash=tx_hash) is False
+
+
+def test_query_oracle_rpc_no_tx_hash_latest_block_matching():
+    """Unit: when source_tx_hash is None, _query_oracle_rpc verifies against latest block."""
+    _, chain, _, _, _, root = _create_mock_merkle_context()
+    transport = _make_rpc_transport(
+        latest_block_result={"receiptsRoot": root, "stateRoot": "0x" + "0" * 64, "transactionsRoot": "0x" + "0" * 64}
+    )
+    mgr = CreditcoinSettlementManager(bootstrap_defaults=False, transport=transport)
+    assert mgr._query_oracle_rpc(chain, root, source_tx_hash=None) is True
+
+
+def test_query_oracle_rpc_no_tx_hash_latest_block_mismatch():
+    """Unit: when source_tx_hash is None and latest block doesn't match, returns False."""
+    _, chain, _, _, _, root = _create_mock_merkle_context()
+    transport = _make_rpc_transport(
+        latest_block_result={"receiptsRoot": "0x" + "1" * 64, "stateRoot": "0x" + "2" * 64}
+    )
+    mgr = CreditcoinSettlementManager(bootstrap_defaults=False, transport=transport)
+    assert mgr._query_oracle_rpc(chain, root, source_tx_hash=None) is False
+
+
+# ==============================================================================
+# 2. WHITE-BOX BRANCH COVERAGE & SUBROUTINE TESTS
+# ==============================================================================
+
+def test_whitebox_oracle_branch_with_tx_hash_never_calls_latest_block():
+    """White-box: supplying source_tx_hash takes tx branch and NEVER calls eth_getBlockByNumber."""
+    intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
+    call_log = []
+    transport = _make_rpc_transport(
+        receipt_result={"status": "0x1", "blockHash": "0x" + "b" * 64},
+        block_result={"receiptsRoot": root},
+        call_log=call_log,
+    )
+    mgr = CreditcoinSettlementManager(bootstrap_defaults=False, transport=transport)
+    res = mgr._query_oracle_rpc(chain, root, source_tx_hash=tx_hash)
+
+    assert res is True
+    methods_called = [item[0] for item in call_log]
+    assert methods_called == ["eth_getTransactionReceipt", "eth_getBlockByHash"]
+    assert "eth_getBlockByNumber" not in methods_called
+
+
+def test_whitebox_oracle_branch_without_tx_hash_calls_only_latest_block():
+    """White-box: omitting source_tx_hash takes latest branch and NEVER calls receipt/blockByHash."""
+    _, chain, _, _, _, root = _create_mock_merkle_context()
+    call_log = []
+    transport = _make_rpc_transport(
+        latest_block_result={"receiptsRoot": root},
+        call_log=call_log,
+    )
+    mgr = CreditcoinSettlementManager(bootstrap_defaults=False, transport=transport)
+    res = mgr._query_oracle_rpc(chain, root, source_tx_hash=None)
+
+    assert res is True
+    methods_called = [item[0] for item in call_log]
+    assert methods_called == ["eth_getBlockByNumber"]
+    assert "eth_getTransactionReceipt" not in methods_called
+    assert "eth_getBlockByHash" not in methods_called
+
+
+def test_whitebox_oracle_reverted_tx_halts_early_without_fetching_block():
+    """White-box: reverted tx halts immediately and NEVER calls eth_getBlockByHash."""
+    _, chain, tx_hash, _, _, root = _create_mock_merkle_context()
+    call_log = []
+    transport = _make_rpc_transport(
+        receipt_result={"status": "0x0", "blockHash": "0x" + "b" * 64},
+        call_log=call_log,
+    )
+    mgr = CreditcoinSettlementManager(bootstrap_defaults=False, transport=transport)
+    res = mgr._query_oracle_rpc(chain, root, source_tx_hash=tx_hash)
+
+    assert res is False
+    methods_called = [item[0] for item in call_log]
+    assert methods_called == ["eth_getTransactionReceipt"]
+    assert "eth_getBlockByHash" not in methods_called
+
+
+def test_whitebox_block_contains_root_subroutine():
+    """White-box: verify _block_contains_root handles case-insensitivity, missing keys, and bad types."""
+    root = "0x" + "a" * 64
+    upper_root = "0X" + "A" * 64
+
+    assert CreditcoinSettlementManager._block_contains_root({"receiptsRoot": root}, root) is True
+    assert CreditcoinSettlementManager._block_contains_root({"receiptsRoot": upper_root}, root) is True
+    assert CreditcoinSettlementManager._block_contains_root({"stateRoot": root}, root) is True
+    assert CreditcoinSettlementManager._block_contains_root({"transactionsRoot": root}, root) is True
+    assert CreditcoinSettlementManager._block_contains_root({}, root) is False
+    assert CreditcoinSettlementManager._block_contains_root({"receiptsRoot": "0x" + "0" * 64}, root) is False
+
+    with pytest.raises(AssertionError):
+        CreditcoinSettlementManager._block_contains_root("not_a_dict", root)
+    with pytest.raises(AssertionError):
+        CreditcoinSettlementManager._block_contains_root({}, "not_hex")
+
+
+def test_whitebox_fetch_block_by_tx_subroutine():
+    """White-box: verify _fetch_block_by_tx returns None on status errors or missing blocks."""
+    tx_hash = "0x" + "c" * 64
+    rpc_url = "https://fake.rpc"
+
+    # 1. Missing receipt returns None
+    with httpx.Client(transport=_make_rpc_transport(receipt_result=None)) as client:
+        assert CreditcoinSettlementManager._fetch_block_by_tx(client, rpc_url, tx_hash) is None
+
+    # 2. Reverted status returns None
+    with httpx.Client(transport=_make_rpc_transport(receipt_result={"status": "0x0", "blockHash": "0x123"})) as client:
+        assert CreditcoinSettlementManager._fetch_block_by_tx(client, rpc_url, tx_hash) is None
+
+    # 3. Successful block fetch returns block dict
+    block_dict = {"receiptsRoot": "0x" + "d" * 64}
+    with httpx.Client(transport=_make_rpc_transport(
+        receipt_result={"status": "0x1", "blockHash": "0x123"},
+        block_result=block_dict,
+    )) as client:
+        res = CreditcoinSettlementManager._fetch_block_by_tx(client, rpc_url, tx_hash)
+        assert res == block_dict
+
+
+# ==============================================================================
+# 3. BLACK-BOX TESTS (REAL TRANSPORT, ZERO MONKEYPATCHING)
+# ==============================================================================
+
+def test_execute_solver_reimbursement_dynamic_anchoring_success():
+    """
+    Black-box: Real execute_solver_reimbursement with native MockTransport.
+    NO monkeypatching of _query_oracle_rpc! Genuine verification release.
+    """
     intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
     solver = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
 
-    mgr.register_escrow(intent_id, solver, 600.0)
-
-    # Mock the RPC call to return True for on-chain oracle attestation
-    monkeypatch.setattr(mgr, "_query_oracle_rpc", lambda c, r, t=None: True)
+    transport = _make_rpc_transport(
+        receipt_result={"status": "0x1", "blockHash": "0x" + "d" * 64},
+        block_result={"receiptsRoot": root, "stateRoot": "0x" + "e" * 64, "transactionsRoot": "0x" + "f" * 64},
+    )
+    mgr = CreditcoinSettlementManager(bootstrap_defaults=False, transport=transport)
+    mgr.register_escrow(intent_id, solver, 850.0)
 
     receipt = mgr.execute_solver_reimbursement(
         intent_id=intent_id,
@@ -277,20 +550,29 @@ def test_oracle_rpc_dynamic_anchoring_success(monkeypatch):
         merkle_root=root,
     )
     assert receipt["success"] is True
-    assert mgr.is_trusted_root(chain, root) is True
+    assert receipt["amount_ctc_released"] == 850.0
     assert mgr.get_escrow_balance(intent_id) == 0.0
+    assert mgr.is_trusted_root(chain, root) is True
 
 
-def test_oracle_rpc_dynamic_anchoring_failure_rejected(monkeypatch):
-    """Verify that when RPC oracle lookup fails or returns false, unanchored root is strictly rejected."""
-    mgr = CreditcoinSettlementManager(bootstrap_defaults=False)
+def test_execute_solver_reimbursement_mismatched_merkle_root_rejected():
+    """
+    Black-box: Attacker submits genuine tx_hash but mismatched Merkle root.
+    NO monkeypatching! Transport feeds real receipt, settlement strictly rejected.
+    """
     intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
     solver = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
 
-    mgr.register_escrow(intent_id, solver, 750.0)
-
-    # Mock the RPC call to return False
-    monkeypatch.setattr(mgr, "_query_oracle_rpc", lambda c, r, t=None: False)
+    transport = _make_rpc_transport(
+        receipt_result={"status": "0x1", "blockHash": "0x" + "b" * 64},
+        block_result={
+            "receiptsRoot": "0x" + "1" * 64,
+            "stateRoot": "0x" + "2" * 64,
+            "transactionsRoot": "0x" + "3" * 64,
+        },
+    )
+    mgr = CreditcoinSettlementManager(bootstrap_defaults=False, transport=transport)
+    mgr.register_escrow(intent_id, solver, 1000.0)
 
     receipt = mgr.execute_solver_reimbursement(
         intent_id=intent_id,
@@ -303,7 +585,35 @@ def test_oracle_rpc_dynamic_anchoring_failure_rejected(monkeypatch):
     )
     assert receipt["success"] is False
     assert "Unanchored Merkle root" in receipt["error"]
-    assert mgr.get_escrow_balance(intent_id) == 750.0
+    assert mgr.get_escrow_balance(intent_id) == 1000.0
+    assert mgr.is_trusted_root(chain, root) is False
+
+
+def test_execute_solver_reimbursement_reverted_tx_rejected():
+    """
+    Black-box: Reverted transaction receipt on source chain rejects settlement.
+    """
+    intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
+    solver = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
+
+    transport = _make_rpc_transport(
+        receipt_result={"status": "0x0", "blockHash": "0x" + "a" * 64},
+    )
+    mgr = CreditcoinSettlementManager(bootstrap_defaults=False, transport=transport)
+    mgr.register_escrow(intent_id, solver, 500.0)
+
+    receipt = mgr.execute_solver_reimbursement(
+        intent_id=intent_id,
+        solver_address=solver,
+        source_chain=chain,
+        source_tx_hash=tx_hash,
+        expected_recipient=recip,
+        merkle_proof=proof,
+        merkle_root=root,
+    )
+    assert receipt["success"] is False
+    assert "Unanchored Merkle root" in receipt["error"]
+    assert mgr.get_escrow_balance(intent_id) == 500.0
 
 
 def test_verify_attestcoin_proof_depth_exceeds_64_fails():
@@ -322,129 +632,3 @@ def test_verify_attestcoin_proof_depth_exceeds_64_fails():
             merkle_root=root,
         )
     assert "64" in str(exc_info.value)
-
-
-class _MockHttpResponse:
-    def __init__(self, data, status_code=200):
-        self._data = data
-        self.status_code = status_code
-
-    def json(self):
-        return self._data
-
-
-def test_oracle_rpc_mismatched_merkle_root_with_valid_tx_receipt_rejected(monkeypatch):
-    """
-    CRITICAL VULNERABILITY REGRESSION TEST:
-    Verify that an attacker supplying a valid source tx receipt but an arbitrary unanchored
-    Merkle root CANNOT fool the oracle into anchoring the fake root and draining escrow.
-    """
-    mgr = CreditcoinSettlementManager(bootstrap_defaults=False)
-    intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
-    solver = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
-    mgr.register_escrow(intent_id, solver, 1000.0)
-
-    # Valid receipt for tx_hash, but the block's actual receiptsRoot does NOT match the attacker's root
-    def mock_post(self, url, json=None, **kwargs):
-        method = json.get("method") if json else ""
-        if method == "eth_getTransactionReceipt":
-            return _MockHttpResponse({
-                "result": {"status": "0x1", "blockHash": "0x" + "b" * 64}
-            })
-        elif method == "eth_getBlockByHash":
-            return _MockHttpResponse({
-                "result": {
-                    "receiptsRoot": "0x" + "1" * 64,
-                    "stateRoot": "0x" + "2" * 64,
-                    "transactionsRoot": "0x" + "3" * 64,
-                }
-            })
-        return _MockHttpResponse({}, status_code=404)
-
-    import httpx
-    monkeypatch.setattr(httpx.Client, "post", mock_post)
-
-    # Attacker passes their own self-generated tree root (not matching the block's roots)
-    receipt = mgr.execute_solver_reimbursement(
-        intent_id=intent_id,
-        solver_address=solver,
-        source_chain=chain,
-        source_tx_hash=tx_hash,
-        expected_recipient=recip,
-        merkle_proof=proof,
-        merkle_root=root,
-    )
-    assert receipt["success"] is False
-    assert "Unanchored Merkle root" in receipt["error"]
-    assert mgr.get_escrow_balance(intent_id) == 1000.0
-    assert mgr.is_trusted_root(chain, root) is False
-
-
-def test_oracle_rpc_matching_receipts_root_accepted(monkeypatch):
-    """Verify that a legitimate fulfillment where Merkle root matches the block's receiptsRoot succeeds."""
-    mgr = CreditcoinSettlementManager(bootstrap_defaults=False)
-    intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
-    solver = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
-    mgr.register_escrow(intent_id, solver, 850.0)
-
-    def mock_post(self, url, json=None, **kwargs):
-        method = json.get("method") if json else ""
-        if method == "eth_getTransactionReceipt":
-            return _MockHttpResponse({
-                "result": {"status": "0x1", "blockHash": "0x" + "d" * 64}
-            })
-        elif method == "eth_getBlockByHash":
-            return _MockHttpResponse({
-                "result": {
-                    "receiptsRoot": root,
-                    "stateRoot": "0x" + "e" * 64,
-                    "transactionsRoot": "0x" + "f" * 64,
-                }
-            })
-        return _MockHttpResponse({}, status_code=404)
-
-    import httpx
-    monkeypatch.setattr(httpx.Client, "post", mock_post)
-
-    receipt = mgr.execute_solver_reimbursement(
-        intent_id=intent_id,
-        solver_address=solver,
-        source_chain=chain,
-        source_tx_hash=tx_hash,
-        expected_recipient=recip,
-        merkle_proof=proof,
-        merkle_root=root,
-    )
-    assert receipt["success"] is True
-    assert receipt["amount_ctc_released"] == 850.0
-    assert mgr.get_escrow_balance(intent_id) == 0.0
-    assert mgr.is_trusted_root(chain, root) is True
-
-
-def test_oracle_rpc_reverted_tx_receipt_rejected(monkeypatch):
-    """Verify that a transaction with status 0x0 (reverted execution) is rejected by the oracle."""
-    mgr = CreditcoinSettlementManager(bootstrap_defaults=False)
-    intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
-    solver = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
-    mgr.register_escrow(intent_id, solver, 500.0)
-
-    def mock_post(self, url, json=None, **kwargs):
-        return _MockHttpResponse({
-            "result": {"status": "0x0", "blockHash": "0x" + "a" * 64}
-        })
-
-    import httpx
-    monkeypatch.setattr(httpx.Client, "post", mock_post)
-
-    receipt = mgr.execute_solver_reimbursement(
-        intent_id=intent_id,
-        solver_address=solver,
-        source_chain=chain,
-        source_tx_hash=tx_hash,
-        expected_recipient=recip,
-        merkle_proof=proof,
-        merkle_root=root,
-    )
-    assert receipt["success"] is False
-    assert "Unanchored Merkle root" in receipt["error"]
-    assert mgr.get_escrow_balance(intent_id) == 500.0

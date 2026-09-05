@@ -37,11 +37,16 @@ class CreditcoinSettlementManager:
     Enforces registered solver identity and onchain oracle root anchoring to prevent unauthorized drains.
     """
 
-    def __init__(self, bootstrap_defaults: bool = True):
+    def __init__(
+        self,
+        bootstrap_defaults: bool = True,
+        transport: Optional[httpx.BaseTransport] = None,
+    ):
         self._settled_intents: Dict[str, Dict[str, Any]] = {}
         self._escrow_balances: Dict[str, float] = {}
         self._escrow_solvers: Dict[str, str] = {}
         self._trusted_roots: Dict[str, set] = {}
+        self._transport: Optional[httpx.BaseTransport] = transport
         if bootstrap_defaults:
             for ch, roots in DEFAULT_CHECKPOINT_ROOTS.items():
                 self._trusted_roots[ch] = set(roots)
@@ -110,7 +115,7 @@ class CreditcoinSettlementManager:
         rpc_url = PUBLIC_RPC_URLS[chain_id]
         target_root = merkle_root.lower()
         try:
-            with httpx.Client(timeout=DEFAULT_RPC_TIMEOUT) as client:
+            with httpx.Client(transport=self._transport, timeout=DEFAULT_RPC_TIMEOUT) as client:
                 if source_tx_hash:
                     if len(source_tx_hash) != 66 or not source_tx_hash.startswith("0x"):
                         return False
