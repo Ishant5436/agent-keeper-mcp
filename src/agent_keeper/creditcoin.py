@@ -15,10 +15,26 @@ class CreditcoinSettlementManager:
     """
     Manages Creditcoin 3.0 Attestcoin intent proofs and cross-chain solver settlements.
     Provides mathematical verification of source-chain fulfillment via cryptographic Merkle inclusion proofs.
+    Enforces registered solver identity and onchain oracle root anchoring to prevent unauthorized drains.
     """
     def __init__(self):
         self._settled_intents: Dict[str, Dict[str, Any]] = {}
         self._escrow_balances: Dict[str, float] = {}
+        self._escrow_solvers: Dict[str, str] = {}
+        self._trusted_roots: Dict[str, set] = {}
+
+    def register_trusted_root(self, source_chain: str, merkle_root: str) -> None:
+        """Register an attested state Merkle root confirmed by an on-chain oracle or light client."""
+        assert len(merkle_root) == 66 and merkle_root.startswith("0x"), "Invalid root format"
+        chain_key = source_chain.lower()
+        if chain_key not in self._trusted_roots:
+            self._trusted_roots[chain_key] = set()
+        self._trusted_roots[chain_key].add(merkle_root.lower())
+
+    def is_trusted_root(self, source_chain: str, merkle_root: str) -> bool:
+        """Check if root is registered in trusted oracle cache."""
+        roots = self._trusted_roots.get(source_chain.lower(), set())
+        return merkle_root.lower() in roots
 
     def register_escrow(self, intent_id: str, solver_address: str, amount_ctc: float) -> bool:
         """
@@ -31,8 +47,10 @@ class CreditcoinSettlementManager:
         if len(self._escrow_balances) >= MAX_INTENTS_CAPACITY:
             oldest = next(iter(self._escrow_balances))
             del self._escrow_balances[oldest]
+            self._escrow_solvers.pop(oldest, None)
 
         self._escrow_balances[intent_id] = round(amount_ctc, 6)
+        self._escrow_solvers[intent_id] = solver_address.lower()
         return True
 
     def verify_attestcoin_proof(
@@ -77,6 +95,29 @@ class CreditcoinSettlementManager:
         assert solver_address.startswith("0x") and len(solver_address) == 42, "Invalid solver"
 
         amount = self._escrow_balances[intent_id]
+
+        # 1. Enforce registered solver identity to prevent unauthorized escrow drain
+        registered_solver = self._escrow_solvers.get(intent_id)
+        if registered_solver and solver_address.lower() != registered_solver:
+            return {
+                "success": False,
+                "error": f"Unauthorized solver address '{solver_address}': does not match registered escrow solver",
+                "intent_id": intent_id,
+                "amount_ctc": amount,
+                "chain_id": CREDITCOIN_CHAIN_ID
+            }
+
+        # 2. Enforce on-chain oracle root anchor when chain has attested roots configured
+        chain_key = source_chain.lower()
+        if chain_key in self._trusted_roots and not self.is_trusted_root(chain_key, merkle_root):
+            return {
+                "success": False,
+                "error": f"Unanchored Merkle root '{merkle_root}' rejected: not attested by source_chain oracle",
+                "intent_id": intent_id,
+                "amount_ctc": amount,
+                "chain_id": CREDITCOIN_CHAIN_ID
+            }
+
         is_valid_proof = self.verify_attestcoin_proof(
             intent_id=intent_id,
             source_chain=source_chain,
@@ -97,6 +138,7 @@ class CreditcoinSettlementManager:
 
         # Release escrow upon verified proof
         del self._escrow_balances[intent_id]
+        self._escrow_solvers.pop(intent_id, None)
         settlement_record = {
             "success": True,
             "intent_id": intent_id,

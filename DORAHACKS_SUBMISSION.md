@@ -87,7 +87,7 @@ Rule 3: Deterministic Memory       | Bounded memory structures          | MAX_IN
 Rule 4: Function Length            | <= 60 lines per routine            | Modular helpers; zero monolithic routines.
 Rule 5: Assertion Density          | >= 2 assertions per function       | Pre-condition & post-condition validation in every unit.
 Rule 7: Check Returns & Parameters | Strict input validation            | EIP-55 checksum, calldata byte limits (128KB), wei caps.
-Rule 10: Static Analysis & Tests   | 100% test pass rate, 0 warnings   | 70/70 passing test suite (including 5,000-case Hypothesis property-based fuzz tests).
+Rule 10: Static Analysis & Tests   | 100% test pass rate, 0 warnings   | 72/72 passing test suite (including 5,000-case Hypothesis property-based fuzz tests).
 ```
 
 ---
@@ -95,7 +95,7 @@ Rule 10: Static Analysis & Tests   | 100% test pass rate, 0 warnings   | 70/70 p
 ## 4. Creditcoin 3.0 Track Alignment
 
 `AgentKeeper-MCP` natively supports both **Creditcoin Mainnet (Chain ID 1024)** and **Creditcoin Testnet (Chain ID 102031)**:
-* **Attestcoin Proof Settlement (`keeper_creditcoin_settle`):** Validates that cross-chain solver tasks initiated on L2s (Arbitrum, Base, Mantle) are cryptographically matched to valid transaction hashes via real Merkle branch proofs before releasing escrowed CTC funds.
+* **Attestcoin Proof Settlement (`keeper_creditcoin_settle`):** Validates that cross-chain solver tasks initiated on L2s (Arbitrum, Base, Mantle) are cryptographically matched to valid transaction hashes via real Merkle branch proofs before releasing escrowed CTC funds. Enforces registered solver addresses and on-chain oracle root anchoring.
 * **Non-Custodial Architecture:** Solvers receive programmatic EIP-712 payment promises that can be verified and claimed onchain without human coordinator intervention.
 * **Deterministic Accounting:** Bounded state tracking guarantees that solver balances and fees remain fully solvent under high-throughput request loads.
 
@@ -108,7 +108,7 @@ Rule 10: Static Analysis & Tests   | 100% test pass rate, 0 warnings   | 70/70 p
 git clone https://github.com/Ishant5436/agent-keeper-mcp.git
 cd agent-keeper-mcp
 
-# 2. Execute Automated Test Suite (70 Tests Passing in <2.0s)
+# 2. Execute Automated Test Suite (72 Tests Passing in <2.0s)
 make test
 
 # 3. Run Interactive Demonstrator
@@ -117,7 +117,7 @@ make demo
 
 ### Verification Telemetry Output:
 ```
-============================== 70 passed in 1.95s ==============================
+============================== 72 passed in 1.95s ==============================
 [SUCCESS] FlatMerkleTree: O(log N) inclusion proofs verified
 [SUCCESS] Creditcoin 3.0: Attestcoin solver escrow & reimbursement confirmed
 [SUCCESS] EIP-712: MicroPaymentPermit signed within daily allowance ($10.00)

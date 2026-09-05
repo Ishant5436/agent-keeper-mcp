@@ -171,3 +171,54 @@ def test_escrow_fifo_capacity_bound():
     for i in range(2050):
         mgr.register_escrow(f"intent_{i}", solver, 1.0)
     assert len(mgr._escrow_balances) == 2048
+
+
+def test_execute_solver_reimbursement_unauthorized_solver_rejected():
+    """Verify that an attacker attempting to settle a legitimate intent to their own address is rejected."""
+    mgr = CreditcoinSettlementManager()
+    intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
+    legit_solver = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
+    attacker_solver = "0xd8da6bf26964af9d7eed9e03e53415d37aa96045"
+
+    mgr.register_escrow(intent_id, legit_solver, 500.0)
+
+    receipt = mgr.execute_solver_reimbursement(
+        intent_id=intent_id,
+        solver_address=attacker_solver,
+        source_chain=chain,
+        source_tx_hash=tx_hash,
+        expected_recipient=recip,
+        merkle_proof=proof,
+        merkle_root=root
+    )
+    assert receipt["success"] is False
+    assert "Unauthorized solver" in receipt["error"]
+    assert mgr.get_escrow_balance(intent_id) == 500.0
+
+
+def test_execute_solver_reimbursement_unanchored_merkle_root_rejected():
+    """Verify that a caller supplying an unanchored Merkle root is rejected when oracle roots are configured."""
+    mgr = CreditcoinSettlementManager()
+    intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
+    solver = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
+
+    # Register an official attested root for ethereum
+    official_oracle_root = "0x" + "9" * 64
+    mgr.register_trusted_root(chain, official_oracle_root)
+
+    mgr.register_escrow(intent_id, solver, 300.0)
+
+    # Calling with forged/unattested root (even if mathematically self-consistent) must fail
+    receipt = mgr.execute_solver_reimbursement(
+        intent_id=intent_id,
+        solver_address=solver,
+        source_chain=chain,
+        source_tx_hash=tx_hash,
+        expected_recipient=recip,
+        merkle_proof=proof,
+        merkle_root=root
+    )
+    assert receipt["success"] is False
+    assert "Unanchored Merkle root" in receipt["error"]
+    assert mgr.get_escrow_balance(intent_id) == 300.0
+
