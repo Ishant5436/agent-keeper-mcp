@@ -194,26 +194,33 @@ def keeper_creditcoin_settle(
     Settle a cross-chain task intent on Creditcoin 3.0 EVM (Chain ID 102031).
     Cryptographically verifies the source-chain Attestcoin Merkle proof and releases escrow reimbursement to the solver.
     """
-    req = CreditcoinSettlementRequest(
-        intent_id=intent_id,
-        solver_address=solver_address,
-        source_chain=source_chain,
-        source_tx_hash=source_tx_hash,
-        expected_recipient=expected_recipient,
-        merkle_proof=merkle_proof,
-        merkle_root=merkle_root,
-    )
+    try:
+        req = CreditcoinSettlementRequest(
+            intent_id=intent_id,
+            solver_address=solver_address,
+            source_chain=source_chain,
+            source_tx_hash=source_tx_hash,
+            expected_recipient=expected_recipient,
+            merkle_proof=merkle_proof,
+            merkle_root=merkle_root,
+        )
 
-    receipt = _creditcoin_manager.execute_solver_reimbursement(
-        intent_id=req.intent_id,
-        solver_address=req.solver_address,
-        source_chain=req.source_chain,
-        source_tx_hash=req.source_tx_hash,
-        expected_recipient=req.expected_recipient,
-        merkle_proof=req.merkle_proof,
-        merkle_root=req.merkle_root,
-    )
-    return receipt
+        return _creditcoin_manager.execute_solver_reimbursement(
+            intent_id=req.intent_id,
+            solver_address=req.solver_address,
+            source_chain=req.source_chain,
+            source_tx_hash=req.source_tx_hash,
+            expected_recipient=req.expected_recipient,
+            merkle_proof=req.merkle_proof,
+            merkle_root=req.merkle_root,
+        )
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "intent_id": intent_id,
+            "chain_id": 102031,
+        }
 
 
 if __name__ == "__main__":

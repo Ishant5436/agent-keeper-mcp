@@ -197,6 +197,16 @@ class CreditcoinSettlementRequest(BaseModel):
         assert len(v) <= 64, "Merkle proof depth exceeds maximum safety ceiling of 64"
         for item in v:
             assert isinstance(item, (tuple, list)) and len(item) == 2, "Proof item must be (sibling_hash, position)"
+            sibling = item[0]
+            # Sibling digests are held to the same format contract as every other
+            # hash on this model. Without this, malformed hex reaches
+            # FlatMerkleTree.verify_proof and raises a raw ValueError out of
+            # bytes.fromhex() instead of a structured validation error.
+            assert isinstance(sibling, str), "Proof sibling hash must be a string"
+            assert sibling.startswith("0x") and len(sibling) == 66, (
+                "Proof sibling hash must be a 0x-prefixed 32-byte hex string (66 chars)"
+            )
+            assert bool(HEX_REGEX.match(sibling)), "Proof sibling hash must be valid hex"
             assert item[1] in ("left", "right"), "Proof position must be 'left' or 'right'"
         return v
 
