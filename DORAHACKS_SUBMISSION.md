@@ -67,13 +67,16 @@ The implementation strictly satisfies the Power of 10 Safety Invariants:
 
 | Invariant | Standard Enforced | Implementation Evidence |
 | :--- | :--- | :--- |
-| **Rule 1: Simple Control Flow** | Zero recursion, zero longjmp | Flat array iteration; iterative Merkle proof build. |
+| **Rule 1: Simple Control Flow** | Zero recursion, zero longjmp | Flat array iteration; iterative Merkle proof build without stack recursion. |
 | **Rule 2: Bounded Loops** | Fixed upper bounds on all loops | Retry loops bounded at `max_retries=3`; Merkle depth <= 64. |
-| **Rule 3: Deterministic Memory** | Bounded memory structures | `MAX_INTENTS_CAPACITY = 2048`; FIFO eviction limits. |
-| **Rule 4: Function Length** | <= 60 lines per routine | Modular helpers; zero monolithic routines. |
-| **Rule 5: Assertion Density** | >= 2 assertions per function | Pre-condition & post-condition validation in every unit. |
-| **Rule 7: Check Returns & Parameters** | Strict input validation | EIP-55 checksum, calldata byte limits (128KB), wei caps. |
-| **Rule 10: Static Analysis & Tests** | 100% test pass rate, 0 warnings | 72/72 passing test suite (including 5,000-case Hypothesis property-based fuzz tests). |
+| **Rule 3: Deterministic Memory** | Bounded memory structures | `MAX_INTENTS_CAPACITY = 2048`; FIFO eviction limits on caches. |
+| **Rule 4: Function Length** | <= 60 lines per routine | Modular helper architecture; zero monolithic procedures. |
+| **Rule 5: Assertion Density** | >= 2 assertions per function | Pre-condition and post-condition invariants validated in every routine. |
+| **Rule 6: Smallest Scope** | Minimal variable scoping | Variables declared at smallest local scope; zero global state mutation. |
+| **Rule 7: Check Returns & Parameters** | Strict input validation | EIP-55 checksum, calldata byte limits (128KB), wei spending caps. |
+| **Rule 8: Minimal Metaprogramming** | Zero dynamic code evaluation | Strict Pydantic schemas; zero `eval()`, `exec()`, or dynamic monkey-patching. |
+| **Rule 9: Restrict Pointer Indirection** | Single-level reference traversal | Flat contiguous array indexing `((i-1) >> 1)` rather than deep pointer-node trees. |
+| **Rule 10: Static Analysis & Tests** | 100% test pass rate, 0 warnings | 72/72 passing test suite (including 5,000-case Hypothesis property fuzz tests) & 0 flake8 warnings. |
 
 ---
 
