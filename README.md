@@ -2,7 +2,7 @@
 
 > A non-custodial Model Context Protocol (MCP) server that gives autonomous AI agents a safe execution gateway to EVM networks and HTTP 402 paywalled APIs.
 
-[![Tests](https://img.shields.io/badge/tests-72%2F72%20passing-brightgreen)](https://github.com/Ishant5436/agent-keeper-mcp)
+[![Tests](https://img.shields.io/badge/tests-80%2F80%20passing-brightgreen)](https://github.com/Ishant5436/agent-keeper-mcp)
 [![CI](https://github.com/Ishant5436/agent-keeper-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Ishant5436/agent-keeper-mcp/actions)
 [![Creditcoin](https://img.shields.io/badge/Creditcoin%203.0-Attestcoin%20Settlement-blue)](src/agent_keeper/creditcoin.py)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
@@ -116,15 +116,20 @@ pytest
 ```
 ============================== test session starts ==============================
 platform darwin -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0
-collected 21 items
+collected 80 items
 
-tests/test_audit.py ....                                                 [ 19%]
-tests/test_relay.py ....                                                 [ 38%]
-tests/test_schemas.py ......                                             [ 66%]
-tests/test_server.py ....                                                [ 85%]
+tests/test_audit.py ....                                                 [  5%]
+tests/test_blackbox.py .................                                 [ 26%]
+tests/test_creditcoin.py .....................                           [ 52%]
+tests/test_fuzz_merkle.py ....                                           [ 57%]
+tests/test_merkle_tree.py ..                                             [ 60%]
+tests/test_relay.py ....                                                 [ 65%]
+tests/test_schemas.py .........                                          [ 76%]
+tests/test_server.py .....                                               [ 82%]
+tests/test_whitebox.py ............                                      [ 97%]
 tests/test_x402.py ...                                                   [100%]
 
-============================== 21 passed in 1.14s ==============================
+============================== 80 passed in 7.82s ==============================
 ```
 
 * **Deterministic Invariants:** Bounded retry loops, minimum 2 runtime assertions per function, zero dynamic heap allocations on execution path.

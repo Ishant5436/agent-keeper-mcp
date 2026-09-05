@@ -322,3 +322,129 @@ def test_verify_attestcoin_proof_depth_exceeds_64_fails():
             merkle_root=root,
         )
     assert "64" in str(exc_info.value)
+
+
+class _MockHttpResponse:
+    def __init__(self, data, status_code=200):
+        self._data = data
+        self.status_code = status_code
+
+    def json(self):
+        return self._data
+
+
+def test_oracle_rpc_mismatched_merkle_root_with_valid_tx_receipt_rejected(monkeypatch):
+    """
+    CRITICAL VULNERABILITY REGRESSION TEST:
+    Verify that an attacker supplying a valid source tx receipt but an arbitrary unanchored
+    Merkle root CANNOT fool the oracle into anchoring the fake root and draining escrow.
+    """
+    mgr = CreditcoinSettlementManager(bootstrap_defaults=False)
+    intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
+    solver = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
+    mgr.register_escrow(intent_id, solver, 1000.0)
+
+    # Valid receipt for tx_hash, but the block's actual receiptsRoot does NOT match the attacker's root
+    def mock_post(self, url, json=None, **kwargs):
+        method = json.get("method") if json else ""
+        if method == "eth_getTransactionReceipt":
+            return _MockHttpResponse({
+                "result": {"status": "0x1", "blockHash": "0x" + "b" * 64}
+            })
+        elif method == "eth_getBlockByHash":
+            return _MockHttpResponse({
+                "result": {
+                    "receiptsRoot": "0x" + "1" * 64,
+                    "stateRoot": "0x" + "2" * 64,
+                    "transactionsRoot": "0x" + "3" * 64,
+                }
+            })
+        return _MockHttpResponse({}, status_code=404)
+
+    import httpx
+    monkeypatch.setattr(httpx.Client, "post", mock_post)
+
+    # Attacker passes their own self-generated tree root (not matching the block's roots)
+    receipt = mgr.execute_solver_reimbursement(
+        intent_id=intent_id,
+        solver_address=solver,
+        source_chain=chain,
+        source_tx_hash=tx_hash,
+        expected_recipient=recip,
+        merkle_proof=proof,
+        merkle_root=root,
+    )
+    assert receipt["success"] is False
+    assert "Unanchored Merkle root" in receipt["error"]
+    assert mgr.get_escrow_balance(intent_id) == 1000.0
+    assert mgr.is_trusted_root(chain, root) is False
+
+
+def test_oracle_rpc_matching_receipts_root_accepted(monkeypatch):
+    """Verify that a legitimate fulfillment where Merkle root matches the block's receiptsRoot succeeds."""
+    mgr = CreditcoinSettlementManager(bootstrap_defaults=False)
+    intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
+    solver = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
+    mgr.register_escrow(intent_id, solver, 850.0)
+
+    def mock_post(self, url, json=None, **kwargs):
+        method = json.get("method") if json else ""
+        if method == "eth_getTransactionReceipt":
+            return _MockHttpResponse({
+                "result": {"status": "0x1", "blockHash": "0x" + "d" * 64}
+            })
+        elif method == "eth_getBlockByHash":
+            return _MockHttpResponse({
+                "result": {
+                    "receiptsRoot": root,
+                    "stateRoot": "0x" + "e" * 64,
+                    "transactionsRoot": "0x" + "f" * 64,
+                }
+            })
+        return _MockHttpResponse({}, status_code=404)
+
+    import httpx
+    monkeypatch.setattr(httpx.Client, "post", mock_post)
+
+    receipt = mgr.execute_solver_reimbursement(
+        intent_id=intent_id,
+        solver_address=solver,
+        source_chain=chain,
+        source_tx_hash=tx_hash,
+        expected_recipient=recip,
+        merkle_proof=proof,
+        merkle_root=root,
+    )
+    assert receipt["success"] is True
+    assert receipt["amount_ctc_released"] == 850.0
+    assert mgr.get_escrow_balance(intent_id) == 0.0
+    assert mgr.is_trusted_root(chain, root) is True
+
+
+def test_oracle_rpc_reverted_tx_receipt_rejected(monkeypatch):
+    """Verify that a transaction with status 0x0 (reverted execution) is rejected by the oracle."""
+    mgr = CreditcoinSettlementManager(bootstrap_defaults=False)
+    intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
+    solver = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
+    mgr.register_escrow(intent_id, solver, 500.0)
+
+    def mock_post(self, url, json=None, **kwargs):
+        return _MockHttpResponse({
+            "result": {"status": "0x0", "blockHash": "0x" + "a" * 64}
+        })
+
+    import httpx
+    monkeypatch.setattr(httpx.Client, "post", mock_post)
+
+    receipt = mgr.execute_solver_reimbursement(
+        intent_id=intent_id,
+        solver_address=solver,
+        source_chain=chain,
+        source_tx_hash=tx_hash,
+        expected_recipient=recip,
+        merkle_proof=proof,
+        merkle_root=root,
+    )
+    assert receipt["success"] is False
+    assert "Unanchored Merkle root" in receipt["error"]
+    assert mgr.get_escrow_balance(intent_id) == 500.0

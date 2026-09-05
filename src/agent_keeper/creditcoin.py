@@ -27,23 +27,7 @@ CHAIN_NAME_TO_ID: Dict[str, int] = {
     "sepolia": 11155111,
 }
 
-DEFAULT_CHECKPOINT_ROOTS: Dict[str, set] = {
-    "ethereum": {
-        "0x5a1b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b",
-    },
-    "base": {
-        "0x4a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b",
-    },
-    "arbitrum": {
-        "0x1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c",
-    },
-    "optimism": {
-        "0x2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d",
-    },
-    "mantle": {
-        "0x3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e",
-    },
-}
+DEFAULT_CHECKPOINT_ROOTS: Dict[str, set] = {}
 
 
 class CreditcoinSettlementManager:
@@ -63,17 +47,14 @@ class CreditcoinSettlementManager:
                 self._trusted_roots[ch] = set(roots)
 
     def register_trusted_root(self, source_chain: str, merkle_root: str) -> None:
-        """Register an attested state Merkle root confirmed by an on-chain oracle or light client."""
+        """Register an attested state or receipts root from Creditcoin oracle or source chain."""
+        assert len(source_chain) > 0, "source_chain cannot be empty"
         assert len(merkle_root) == 66 and merkle_root.startswith("0x"), "Invalid root format"
-        assert len(source_chain) > 0, "Source chain cannot be empty"
-
         chain_key = source_chain.lower()
         if chain_key not in self._trusted_roots:
             self._trusted_roots[chain_key] = set()
-
         if len(self._trusted_roots[chain_key]) >= MAX_ORACLE_CACHE_CAPACITY:
             self._trusted_roots[chain_key].pop()
-
         self._trusted_roots[chain_key].add(merkle_root.lower())
 
     def is_trusted_root(self, source_chain: str, merkle_root: str) -> bool:
@@ -83,10 +64,42 @@ class CreditcoinSettlementManager:
         roots = self._trusted_roots.get(source_chain.lower(), set())
         return merkle_root.lower() in roots
 
+    @staticmethod
+    def _block_contains_root(block_data: Dict[str, Any], target_root: str) -> bool:
+        """Verify if target root matches block receiptsRoot, stateRoot, or transactionsRoot."""
+        assert isinstance(block_data, dict), "Block data must be a dictionary"
+        assert len(target_root) == 66 and target_root.startswith("0x"), "Target root must be valid hex"
+        roots = {
+            (block_data.get("receiptsRoot") or "").lower(),
+            (block_data.get("stateRoot") or "").lower(),
+            (block_data.get("transactionsRoot") or "").lower(),
+        }
+        return target_root.lower() in roots
+
+    @staticmethod
+    def _fetch_block_by_tx(client: httpx.Client, rpc_url: str, tx_hash: str) -> Optional[Dict[str, Any]]:
+        """Fetch block data corresponding to a mined and successful transaction receipt."""
+        assert len(tx_hash) == 66 and tx_hash.startswith("0x"), "Invalid tx hash format"
+        assert len(rpc_url) > 0, "RPC URL cannot be empty"
+        resp = client.post(
+            rpc_url,
+            json={"jsonrpc": "2.0", "method": "eth_getTransactionReceipt", "params": [tx_hash], "id": 1},
+        )
+        if resp.status_code != 200:
+            return None
+        receipt = resp.json().get("result")
+        if not receipt or receipt.get("status") != "0x1" or not receipt.get("blockHash"):
+            return None
+        b_resp = client.post(
+            rpc_url,
+            json={"jsonrpc": "2.0", "method": "eth_getBlockByHash", "params": [receipt["blockHash"], False], "id": 2},
+        )
+        return b_resp.json().get("result") if b_resp.status_code == 200 else None
+
     def _query_oracle_rpc(
         self, source_chain: str, merkle_root: str, source_tx_hash: Optional[str] = None
     ) -> bool:
-        """Query source-chain RPC or Creditcoin oracle bridge to verify on-chain root attestation."""
+        """Query source-chain RPC to verify that merkle_root matches on-chain block cryptographic roots."""
         assert isinstance(source_chain, str) and len(source_chain) > 0, "Valid chain required"
         assert len(merkle_root) == 66 and merkle_root.startswith("0x"), "Valid root required"
 
@@ -95,23 +108,14 @@ class CreditcoinSettlementManager:
             return False
 
         rpc_url = PUBLIC_RPC_URLS[chain_id]
+        target_root = merkle_root.lower()
         try:
             with httpx.Client(timeout=DEFAULT_RPC_TIMEOUT) as client:
-                if source_tx_hash and len(source_tx_hash) == 66 and source_tx_hash.startswith("0x"):
-                    resp = client.post(
-                        rpc_url,
-                        json={
-                            "jsonrpc": "2.0",
-                            "method": "eth_getTransactionReceipt",
-                            "params": [source_tx_hash],
-                            "id": 1,
-                        },
-                    )
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        receipt = data.get("result")
-                        if receipt and receipt.get("blockHash"):
-                            return True
+                if source_tx_hash:
+                    if len(source_tx_hash) != 66 or not source_tx_hash.startswith("0x"):
+                        return False
+                    block_data = self._fetch_block_by_tx(client, rpc_url, source_tx_hash)
+                    return self._block_contains_root(block_data or {}, target_root)
 
                 block_resp = client.post(
                     rpc_url,
@@ -119,18 +123,12 @@ class CreditcoinSettlementManager:
                         "jsonrpc": "2.0",
                         "method": "eth_getBlockByNumber",
                         "params": ["latest", False],
-                        "id": 2,
+                        "id": 3,
                     },
                 )
                 if block_resp.status_code == 200:
                     block_data = block_resp.json().get("result") or {}
-                    receipts_root = block_data.get("receiptsRoot") or ""
-                    state_root = block_data.get("stateRoot") or ""
-                    if (
-                        merkle_root.lower() == receipts_root.lower()
-                        or merkle_root.lower() == state_root.lower()
-                    ):
-                        return True
+                    return self._block_contains_root(block_data, target_root)
         except Exception:
             return False
 
