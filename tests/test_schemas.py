@@ -119,3 +119,32 @@ def test_creditcoin_chain_id_support():
         chain_id=1024,
     )
     assert req.chain_id == 1024
+
+
+def test_creditcoin_settlement_request_merkle_proof_depth_bound():
+    """Verify that a Merkle proof of depth <= 64 is accepted, but depth > 64 is strictly rejected."""
+    from agent_keeper.schemas import CreditcoinSettlementRequest
+
+    valid_proof = [("0x" + "1" * 64, "left") for _ in range(64)]
+    req = CreditcoinSettlementRequest(
+        intent_id="intent_depth_valid",
+        solver_address="0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+        source_chain="base",
+        source_tx_hash="0x" + "a" * 64,
+        expected_recipient="0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+        merkle_proof=valid_proof,
+        merkle_root="0x" + "b" * 64,
+    )
+    assert len(req.merkle_proof) == 64
+
+    overflow_proof = [("0x" + "1" * 64, "left") for _ in range(65)]
+    with pytest.raises(ValidationError):
+        CreditcoinSettlementRequest(
+            intent_id="intent_depth_overflow",
+            solver_address="0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+            source_chain="base",
+            source_tx_hash="0x" + "a" * 64,
+            expected_recipient="0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+            merkle_proof=overflow_proof,
+            merkle_root="0x" + "b" * 64,
+        )

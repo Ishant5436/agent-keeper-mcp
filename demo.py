@@ -85,6 +85,9 @@ def main():
     # Register escrow collateral on Creditcoin L1
     _creditcoin_manager.register_escrow(intent_id, solver_addr, 1500.0)
 
+    # Anchor Attestcoin oracle root from source chain (Base L2)
+    _creditcoin_manager.register_trusted_root(src_chain, tree.root)
+
     ctc_settle = keeper_creditcoin_settle(
         intent_id=intent_id,
         solver_address=solver_addr,

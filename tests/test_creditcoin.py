@@ -123,6 +123,7 @@ def test_execute_solver_reimbursement_success():
     intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
     solver = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
 
+    mgr.register_trusted_root(chain, root)
     mgr.register_escrow(intent_id, solver, 250.0)
     assert mgr.get_escrow_balance(intent_id) == 250.0
 
@@ -147,6 +148,7 @@ def test_execute_solver_reimbursement_rejected_on_invalid_proof():
     solver = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
     tampered_tx = "0x" + "e" * 64
 
+    mgr.register_trusted_root(chain, root)
     mgr.register_escrow(intent_id, solver, 250.0)
     receipt = mgr.execute_solver_reimbursement(
         intent_id=intent_id,
@@ -187,6 +189,7 @@ def test_execute_solver_reimbursement_unauthorized_solver_rejected():
     legit_solver = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
     attacker_solver = "0xd8da6bf26964af9d7eed9e03e53415d37aa96045"
 
+    mgr.register_trusted_root(chain, root)
     mgr.register_escrow(intent_id, legit_solver, 500.0)
 
     receipt = mgr.execute_solver_reimbursement(
@@ -228,3 +231,94 @@ def test_execute_solver_reimbursement_unanchored_merkle_root_rejected():
     assert receipt["success"] is False
     assert "Unanchored Merkle root" in receipt["error"]
     assert mgr.get_escrow_balance(intent_id) == 300.0
+
+
+def test_execute_solver_reimbursement_unanchored_root_rejected_on_fresh_manager():
+    """Verify that an unanchored root submitted on a fresh unconfigured chain is rejected (deny-by-default)."""
+    mgr = CreditcoinSettlementManager(bootstrap_defaults=False)
+    intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
+    solver = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
+
+    mgr.register_escrow(intent_id, solver, 400.0)
+
+    # Calling with unanchored root when chain has zero registered roots must fail
+    receipt = mgr.execute_solver_reimbursement(
+        intent_id=intent_id,
+        solver_address=solver,
+        source_chain="mantle",
+        source_tx_hash=tx_hash,
+        expected_recipient=recip,
+        merkle_proof=proof,
+        merkle_root=root,
+    )
+    assert receipt["success"] is False
+    assert "Unanchored Merkle root" in receipt["error"]
+    assert mgr.get_escrow_balance(intent_id) == 400.0
+
+
+def test_oracle_rpc_dynamic_anchoring_success(monkeypatch):
+    """Verify that when RPC oracle confirms the root, it dynamically anchors and releases escrow."""
+    mgr = CreditcoinSettlementManager(bootstrap_defaults=False)
+    intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
+    solver = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
+
+    mgr.register_escrow(intent_id, solver, 600.0)
+
+    # Mock the RPC call to return True for on-chain oracle attestation
+    monkeypatch.setattr(mgr, "_query_oracle_rpc", lambda c, r, t=None: True)
+
+    receipt = mgr.execute_solver_reimbursement(
+        intent_id=intent_id,
+        solver_address=solver,
+        source_chain=chain,
+        source_tx_hash=tx_hash,
+        expected_recipient=recip,
+        merkle_proof=proof,
+        merkle_root=root,
+    )
+    assert receipt["success"] is True
+    assert mgr.is_trusted_root(chain, root) is True
+    assert mgr.get_escrow_balance(intent_id) == 0.0
+
+
+def test_oracle_rpc_dynamic_anchoring_failure_rejected(monkeypatch):
+    """Verify that when RPC oracle lookup fails or returns false, unanchored root is strictly rejected."""
+    mgr = CreditcoinSettlementManager(bootstrap_defaults=False)
+    intent_id, chain, tx_hash, recip, proof, root = _create_mock_merkle_context()
+    solver = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
+
+    mgr.register_escrow(intent_id, solver, 750.0)
+
+    # Mock the RPC call to return False
+    monkeypatch.setattr(mgr, "_query_oracle_rpc", lambda c, r, t=None: False)
+
+    receipt = mgr.execute_solver_reimbursement(
+        intent_id=intent_id,
+        solver_address=solver,
+        source_chain=chain,
+        source_tx_hash=tx_hash,
+        expected_recipient=recip,
+        merkle_proof=proof,
+        merkle_root=root,
+    )
+    assert receipt["success"] is False
+    assert "Unanchored Merkle root" in receipt["error"]
+    assert mgr.get_escrow_balance(intent_id) == 750.0
+
+
+def test_verify_attestcoin_proof_depth_exceeds_64_fails():
+    """Verify that a Merkle proof exceeding maximum tree depth of 64 triggers invariant failure."""
+    mgr = CreditcoinSettlementManager()
+    intent_id, chain, tx_hash, recip, _, root = _create_mock_merkle_context()
+    oversized_proof = [("0x" + "1" * 64, "left") for _ in range(65)]
+
+    with pytest.raises(AssertionError) as exc_info:
+        mgr.verify_attestcoin_proof(
+            intent_id=intent_id,
+            source_chain=chain,
+            source_tx_hash=tx_hash,
+            expected_recipient=recip,
+            merkle_proof=oversized_proof,
+            merkle_root=root,
+        )
+    assert "64" in str(exc_info.value)

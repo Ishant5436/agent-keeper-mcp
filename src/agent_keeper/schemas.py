@@ -179,13 +179,26 @@ class CreditcoinSettlementRequest(BaseModel):
     source_chain: str = Field(..., min_length=1, max_length=64, description="Source chain name.")
     source_tx_hash: str = Field(..., description="0x-prefixed 32-byte transaction hash on source chain.")
     expected_recipient: str = Field(..., description="EIP-55 recipient address on source chain.")
-    merkle_proof: list[tuple[str, str]] = Field(..., description="Merkle proof tuples (sibling_hash, 'left'|'right').")
+    merkle_proof: list[tuple[str, str]] = Field(
+        ...,
+        max_length=64,
+        description="Merkle proof tuples (sibling_hash, 'left'|'right'), strictly capped at depth 64.",
+    )
     merkle_root: str = Field(..., description="0x-prefixed 32-byte Merkle root on Creditcoin.")
 
     @field_validator("solver_address", "expected_recipient")
     @classmethod
     def check_addresses(cls, v: str) -> str:
         return validate_strict_eip55(v)
+
+    @field_validator("merkle_proof")
+    @classmethod
+    def check_proof(cls, v: list[tuple[str, str]]) -> list[tuple[str, str]]:
+        assert len(v) <= 64, "Merkle proof depth exceeds maximum safety ceiling of 64"
+        for item in v:
+            assert isinstance(item, (tuple, list)) and len(item) == 2, "Proof item must be (sibling_hash, position)"
+            assert item[1] in ("left", "right"), "Proof position must be 'left' or 'right'"
+        return v
 
     @field_validator("source_tx_hash", "merkle_root")
     @classmethod

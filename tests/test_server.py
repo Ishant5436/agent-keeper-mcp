@@ -64,6 +64,7 @@ def test_mcp_creditcoin_settle_tool():
     proof = tree.get_proof(0)
 
     _creditcoin_manager.register_escrow(intent_id, solver, 500.0)
+    _creditcoin_manager.register_trusted_root(chain, tree.root)
 
     res = keeper_creditcoin_settle(
         intent_id=intent_id,

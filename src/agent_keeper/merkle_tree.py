@@ -73,9 +73,11 @@ class FlatMerkleTree:
     def verify_proof(leaf: str, proof: List[Tuple[str, str]], root: str) -> bool:
         """
         Verify cryptographic inclusion in O(log N) time.
+        Bounded execution: Merkle proof depth strictly capped at <= 64.
         """
         assert isinstance(leaf, str), "Leaf must be a string"
         assert isinstance(root, str), "Root must be a string"
+        assert len(proof) <= 64, "Merkle proof depth exceeds maximum safety ceiling of 64"
 
         current = keccak(leaf.encode("utf-8") if isinstance(leaf, str) else leaf)
 
