@@ -56,10 +56,32 @@ class KeeperRelayClient:
                 cached.audit_receipt["idempotent_hit"] = True
             return cached
 
+        # Deterministic Dry Run Simulation (Does not broadcast, does not mutate cache or ledger)
+        if req.dry_run:
+            gas_used = 42000 if len(req.calldata_hex) > 2 else 21000
+            eff_gas_price = 1.5 if req.chain_id == 8453 else 25.0
+            return TxExecutionResponse(
+                success=True,
+                tx_hash=None,
+                chain_id=req.chain_id,
+                nonce=None,
+                gas_used=gas_used,
+                effective_gas_price_gwei=eff_gas_price,
+                status="DRY_RUN_PASSED",
+                audit_receipt={
+                    "dry_run": True,
+                    "verdict": "VALIDATED_DETERMINISTIC",
+                    "target_address": req.target_address,
+                    "value_wei": req.value_wei,
+                    "calldata_bytes": len(req.calldata_hex[2:]) // 2,
+                },
+            )
+
         current_nonce = 101
         last_error = None
 
         # Bounded Loop (Deterministic Safety Rule 2: Loop must have a fixed upper bound)
+
         for attempt in range(1, self.max_retries + 1):
             assert attempt <= self.max_retries, "Loop invariant violated"
             if simulate_failure:

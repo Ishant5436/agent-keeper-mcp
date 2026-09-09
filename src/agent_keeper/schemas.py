@@ -12,6 +12,7 @@ from agent_keeper.config import (
     MAX_AUTONOMOUS_PAYMENT_USDC,
     MAX_CALLDATA_BYTES,
     MAX_VALUE_WEI_CAP,
+    MAX_WORKFLOW_STEPS,
     SUPPORTED_CHAINS,
 )
 
@@ -63,10 +64,15 @@ class TxExecutionRequest(BaseModel):
         max_length=64,
         description="Optional unique task ID to prevent duplicate txs.",
     )
+    dry_run: bool = Field(
+        default=False,
+        description="Deterministic simulation without broadcasting or state mutation.",
+    )
 
     @field_validator("target_address")
     @classmethod
     def validate_target(cls, v: str) -> str:
+
         return validate_strict_eip55(v)
 
     @field_validator("calldata_hex")
@@ -227,4 +233,57 @@ class CreditcoinSettlementResponse(BaseModel):
     source_tx_hash: str | None = None
     merkle_root: str | None = None
     chain_id: int = 102031
+    error: str | None = None
+
+
+class WorkflowStep(BaseModel):
+    """Atomic step within an agent-composed workflow."""
+
+    step_id: str = Field(..., max_length=64, description="Unique identifier for the step.")
+    action: str = Field(
+        ...,
+        description="Action type: 'execute_tx', 'x402_settle', 'creditcoin_settle', or 'audit_verify'.",
+    )
+    params: dict[str, Any] = Field(
+        default_factory=dict, description="Parameters matching the action schema."
+    )
+
+
+class WorkflowPlanRequest(BaseModel):
+    """Workflow planning and pre-flight dry-run validation request."""
+
+    steps: list[WorkflowStep] = Field(
+        ..., description="Ordered list of workflow steps to dry-run and compose."
+    )
+
+    @field_validator("steps")
+    @classmethod
+    def validate_steps_bounds(cls, v: list[WorkflowStep]) -> list[WorkflowStep]:
+        assert isinstance(v, list), "Steps must be a list"
+        if len(v) == 0:
+            raise ValueError("Workflow must contain at least one step")
+        if len(v) > MAX_WORKFLOW_STEPS:
+            raise ValueError(
+                f"Workflow steps ({len(v)}) exceeds maximum allowed limit ({MAX_WORKFLOW_STEPS})"
+            )
+        return v
+
+
+class WorkflowStepPreview(BaseModel):
+    step_id: str
+    action: str
+    valid: bool
+    status: str
+    estimated_cost: dict[str, Any] = Field(default_factory=dict)
+    error: str | None = None
+
+
+class WorkflowPlanResponse(BaseModel):
+    success: bool
+    verdict: str  # 'READY_FOR_EXECUTION' or 'VALIDATION_FAILED'
+    total_steps: int
+    estimated_total_value_wei: int = 0
+    estimated_total_gas: int = 0
+    estimated_total_usdc: float = 0.0
+    steps: list[WorkflowStepPreview] = Field(default_factory=list)
     error: str | None = None

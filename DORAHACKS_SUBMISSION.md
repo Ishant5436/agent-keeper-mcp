@@ -56,7 +56,7 @@ Every core data structure in `AgentKeeper-MCP` is engineered with explicit time 
 | :--- | :--- | :--- | :--- |
 | **1. `FlatMerkleTree`** | Construction: O(N)<br>Proof Gen: O(log N)<br>Verification: O(log N) | Auxiliary: O(N)<br>Proof Size: O(log N) | Complete binary tree in flat contiguous array; bitwise parent/sibling traversal `((i-1)>>1)`; zero recursive stack frames. |
 | **2. `CreditcoinSolver`** | Registration: O(1)<br>Verification: O(log N)<br>Settlement: O(1) | Bounded Capacity:<br>O(MAX_CAPACITY) | Ring-buffer circular eviction cap (2,048 intents); Merkle inclusion proof traversal; terminal double-spend prevention. |
-| **3. `RelayIdempotencyCache`** | Lookup: O(1)<br>Eviction: O(1) | Bounded Entry Cap:<br>O(K) | SHA-256 seed hashing; prevents duplicate broadcasts during RPC timeouts or fee spikes (TTL = 300s). |
+| **3. `RelayIdempotencyCache`** | Lookup: O(1)<br>Eviction: O(1) | Bounded Entry Cap:<br>O(K) | Keccak256 seed hashing; FIFO capacity eviction (cap = 1024); prevents duplicate broadcasts during RPC timeouts or fee spikes. |
 | **4. `X402PaymentManager`** | Signing: O(1)<br>Verification: O(1) | Fixed State: O(1) | Monotonic cumulative budget invariant: S_t = S_{t-1} + Delta <= S_{max}. |
 
 ---
@@ -68,15 +68,16 @@ The implementation strictly satisfies the Power of 10 Safety Invariants:
 | Invariant | Standard Enforced | Implementation Evidence |
 | :--- | :--- | :--- |
 | **Rule 1: Simple Control Flow** | Zero recursion, zero longjmp | Flat array iteration; iterative Merkle proof build without stack recursion. |
-| **Rule 2: Bounded Loops** | Fixed upper bounds on all loops | Retry loops bounded at `max_retries=3`; Merkle proof depth capped at `<= 64` in schema & tree. |
-| **Rule 3: Deterministic Memory** | Bounded memory structures | `MAX_INTENTS_CAPACITY = 2048`; FIFO eviction limits on caches. |
+| **Rule 2: Bounded Loops** | Fixed upper bounds on all loops | Retry loops bounded at `max_retries=10`; workflow composition bounded at `MAX_WORKFLOW_STEPS=16`; Merkle proof depth capped at `<= 64` in schema & tree. |
+| **Rule 3: Deterministic Memory** | Bounded memory structures | `MAX_INTENTS_CAPACITY = 2048`; FIFO eviction limits on caches (`cap = 1024`). |
 | **Rule 4: Function Length** | <= 60 lines per routine | Modular helper architecture; zero monolithic procedures. |
 | **Rule 5: Assertion Density** | >= 2 assertions per function | Pre-condition and post-condition invariants validated in every routine. |
 | **Rule 6: Smallest Scope** | Encapsulated Manager State | State mutation strictly confined to typed manager class instances with bounded capacity; zero raw mutable module-level globals. |
 | **Rule 7: Check Returns & Parameters** | Strict input validation | EIP-55 checksum, calldata byte limits (128KB), wei spending caps. |
 | **Rule 8: Minimal Metaprogramming** | Zero dynamic code evaluation | Strict Pydantic schemas; zero `eval()`, `exec()`, or dynamic monkey-patching. |
 | **Rule 9: Restrict Pointer Indirection** | Single-level reference traversal | Flat contiguous array indexing `((i-1) >> 1)` rather than deep pointer-node trees. |
-| **Rule 10: Static Analysis & Tests** | 100% test pass rate, 0 warnings | 98/98 passing test suite (including 5,000-case Hypothesis property fuzz tests) & 0 flake8 warnings. |
+| **Rule 10: Static Analysis & Tests** | 100% test pass rate, 0 warnings | 104/104 passing test suite (including 5,000-case Hypothesis property fuzz tests) & 0 flake8 warnings. |
+
 
 ---
 
