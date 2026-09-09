@@ -2,7 +2,7 @@
 
 > A non-custodial Model Context Protocol (MCP) server that gives autonomous AI agents a safe execution gateway to EVM networks and HTTP 402 paywalled APIs.
 
-[![Tests](https://img.shields.io/badge/tests-98%2F98%20passing-brightgreen)](https://github.com/Ishant5436/agent-keeper-mcp)
+[![Tests](https://img.shields.io/badge/tests-104%2F104%20passing-brightgreen)](https://github.com/Ishant5436/agent-keeper-mcp)
 [![CI](https://github.com/Ishant5436/agent-keeper-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Ishant5436/agent-keeper-mcp/actions)
 [![Creditcoin](https://img.shields.io/badge/Creditcoin%203.0-Attestcoin%20Settlement-blue)](src/agent_keeper/creditcoin.py)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
@@ -56,25 +56,32 @@ AgentKeeper sits as a local middleware between the LLM runtime and blockchain ne
 
 ### 1. Non-Custodial Key Sandbox (`keeper_execute_tx`)
 * Validates target contracts, calldata schemas, and gas parameters before signing.
-* Implements an in-memory idempotency cache (`TTL = 300s`) to prevent duplicate execution during network latency.
+* Implements an in-memory FIFO idempotency cache (`cap = 1024`, Keccak256 deduplication) to prevent duplicate execution during network latency.
+* Supports deterministic pre-flight simulation (`dry_run=True`) without state mutation or network broadcast.
 * Never passes raw cryptographic keys to the LLM context.
 
-### 2. Autonomous HTTP 402 Micropayments (`keeper_x402_settle`)
+### 2. Workflow Planning & Dry-Run Composition (`keeper_plan_workflow`)
+* Composes multi-step agent workflows across execution, micropayments, and settlements into a single verified plan.
+* Pre-flight validates all step schemas and calculates aggregate gas, native value, and USDC budget requirements.
+* Bounded to a maximum of 16 steps per workflow to eliminate non-deterministic loop reinterpretation.
+
+### 3. Autonomous HTTP 402 Micropayments (`keeper_x402_settle`)
 * Parses RFC-7231 `WWW-Authenticate` and `402 Payment Required` headers.
 * Generates localized EIP-712 permit signatures within a hard daily allowance (e.g. $10/day spend limit).
 * Automatically retries the paywalled request and returns clean data to the agent.
 
-### 3. Merkle Audit Trail (`keeper_audit_verify`)
-* Builds cryptographic inclusion proofs for all relay actions.
+### 4. Merkle Audit Trail (`keeper_audit_verify`)
+* Builds cryptographic inclusion proofs for all relay actions using a flat array Merkle heap.
 * Allows agents to independently audit state proofs before triggering downstream dependent actions.
 
-### 4. Multi-Chain Budgeting (`keeper_agent_balance`)
+### 5. Multi-Chain Budgeting (`keeper_agent_balance`)
 * Real-time multi-chain RPC balance queries across Base, Arbitrum, Ethereum, and Creditcoin.
 
-### 5. Creditcoin 3.0 Attestcoin Intent Settlement (`keeper_creditcoin_settle`)
+### 6. Creditcoin 3.0 Attestcoin Intent Settlement (`keeper_creditcoin_settle`)
 * Cryptographically verifies source-chain fulfillment receipts against on-chain Merkle roots using `FlatMerkleTree` in $\mathcal{O}(\log N)$ time.
 * Releases locked Creditcoin CTC escrow collateral directly to solvers upon valid cryptographic proof.
 * Real-time balance and gas headroom tracking across EVM chains (Arbitrum, Base, Mantle, Creditcoin).
+
 
 ---
 

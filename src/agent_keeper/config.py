@@ -40,4 +40,5 @@ MAX_AUTONOMOUS_PAYMENT_USDC = 5.00  # Strict micro-payment budget per call ($5.0
 MAX_VALUE_WEI_CAP = (
     100000000000000000  # 0.10 ETH safety cap (~$250 max native transfer)
 )
+MAX_WORKFLOW_STEPS = 16  # Bounded loop invariant for workflow execution
 DEFAULT_REQUEST_TIMEOUT = 15.0

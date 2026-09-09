@@ -21,6 +21,10 @@ from agent_keeper.schemas import (
     AuditProofRequest,
     CreditcoinSettlementRequest,
     TxExecutionRequest,
+    WorkflowPlanRequest,
+    WorkflowPlanResponse,
+    WorkflowStep,
+    WorkflowStepPreview,
     X402PaymentRequest,
 )
 from agent_keeper.x402 import X402PaymentManager
@@ -28,7 +32,7 @@ from agent_keeper.x402 import X402PaymentManager
 mcp = FastMCP(
     "agent-keeper",
     instructions=(
-        "Autonomous onchain transaction gateway, x402 micro-payment solver, "
+        "Autonomous onchain transaction gateway, workflow composer, "
         "and cryptographic audit verification protocol for KeeperHub."
     ),
 )
@@ -83,8 +87,9 @@ def keeper_execute_tx(
     chain_id: int = 1,
     max_priority_fee_gwei: float | None = None,
     idempotency_key: str | None = None,
+    dry_run: bool = False,
 ) -> dict[str, Any]:
-    """Execute an onchain transaction through KeeperHub's MEV-protected relay with automated gas optimization."""
+    """Execute an onchain transaction with gas optimization, or simulate via dry_run=True."""
     try:
         req = TxExecutionRequest(
             target_address=target_address,
@@ -93,6 +98,7 @@ def keeper_execute_tx(
             chain_id=chain_id,
             max_priority_fee_gwei=max_priority_fee_gwei,
             idempotency_key=idempotency_key,
+            dry_run=dry_run,
         )
         res = _relay_client.execute_transaction(req)
         return res.model_dump()
@@ -102,6 +108,7 @@ def keeper_execute_tx(
 
 @mcp.tool()
 def keeper_x402_settle(
+
     resource_url: str,
     amount_usdc: float,
     recipient_address: str,
@@ -221,6 +228,85 @@ def keeper_creditcoin_settle(
             "intent_id": intent_id,
             "chain_id": 102031,
         }
+
+
+@mcp.tool()
+def keeper_plan_workflow(steps: list[dict[str, Any]]) -> dict[str, Any]:
+    """
+    Dry-run and compose an agent workflow across multiple execution steps.
+    Validates input schemas, calculates aggregate budget requirements, and simulates execution without state mutation.
+    """
+    assert isinstance(steps, list), "Steps must be a list"
+    assert len(steps) >= 0, "Steps length must be non-negative"
+
+    try:
+        req = WorkflowPlanRequest(steps=[WorkflowStep(**s) for s in steps])
+    except Exception as e:
+        return {
+            "success": False,
+            "verdict": "VALIDATION_FAILED",
+            "total_steps": len(steps) if isinstance(steps, list) else 0,
+            "error": str(e),
+            "steps": [],
+        }
+
+    total_wei = 0
+    total_gas = 0
+    total_usdc = 0.0
+    previews: list[WorkflowStepPreview] = []
+    all_valid = True
+
+    for step in req.steps:
+        try:
+            params = step.params
+            if step.action == "execute_tx":
+                tx_req = TxExecutionRequest(**params, dry_run=True)
+                gas = 42000 if len(tx_req.calldata_hex) > 2 else 21000
+                total_wei += tx_req.value_wei
+                total_gas += gas
+                previews.append(WorkflowStepPreview(
+                    step_id=step.step_id, action=step.action, valid=True,
+                    status="READY_DRY_RUN", estimated_cost={"value_wei": tx_req.value_wei, "gas": gas}
+                ))
+            elif step.action == "x402_settle":
+                pay_req = X402PaymentRequest(**params)
+                total_usdc += pay_req.amount_usdc
+                previews.append(WorkflowStepPreview(
+                    step_id=step.step_id, action=step.action, valid=True,
+                    status="READY_BUDGETED", estimated_cost={"amount_usdc": pay_req.amount_usdc}
+                ))
+            elif step.action == "creditcoin_settle":
+                CreditcoinSettlementRequest(**params)
+                total_gas += 65000
+                previews.append(WorkflowStepPreview(
+                    step_id=step.step_id, action=step.action, valid=True,
+                    status="READY_MERKLE_PROOF", estimated_cost={"gas": 65000}
+                ))
+            elif step.action == "audit_verify":
+                AuditProofRequest(**params)
+                previews.append(WorkflowStepPreview(
+                    step_id=step.step_id, action=step.action, valid=True,
+                    status="READY_VERIFICATION", estimated_cost={}
+                ))
+            else:
+                raise ValueError(f"Unknown workflow action: '{step.action}'")
+        except Exception as step_err:
+            all_valid = False
+            previews.append(WorkflowStepPreview(
+                step_id=step.step_id, action=step.action, valid=False,
+                status="VALIDATION_FAILED", error=str(step_err)
+            ))
+
+    res = WorkflowPlanResponse(
+        success=all_valid,
+        verdict="READY_FOR_EXECUTION" if all_valid else "VALIDATION_FAILED",
+        total_steps=len(req.steps),
+        estimated_total_value_wei=total_wei,
+        estimated_total_gas=total_gas,
+        estimated_total_usdc=round(total_usdc, 6),
+        steps=previews,
+    )
+    return res.model_dump()
 
 
 if __name__ == "__main__":
