@@ -9,7 +9,8 @@ demo:
 	python3 demo.py
 
 lint:
-	/Users/ishantpanchal/.local/bin/ruff check src/ tests/
+	uv run ruff check src/ tests/
 
 clean:
-	rm -rf __pycache__ .pytest_cache
+	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	rm -rf .pytest_cache .ruff_cache
