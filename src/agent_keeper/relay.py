@@ -6,6 +6,7 @@ Implements Deterministic Safety Invariants (Power of 10 Rules):
 """
 
 import time
+from typing import Any
 
 import httpx
 from eth_utils import keccak
@@ -15,6 +16,7 @@ from agent_keeper.config import (
     KEEPERHUB_API_KEY,
     KEEPERHUB_API_URL,
     MAX_RETRY_ATTEMPTS,
+    PUBLIC_RPC_URLS,
 )
 from agent_keeper.schemas import TxExecutionRequest, TxExecutionResponse
 
@@ -40,6 +42,103 @@ class KeeperRelayClient:
         raw_seed = f"{req.chain_id}:{req.target_address}:{req.calldata_hex}:{req.value_wei}:{nonce}".encode()
         return "0x" + keccak(raw_seed).hex()
 
+    def _fetch_onchain_nonce(self, address: str, chain_id: int) -> int | None:
+        """Fetch live transaction count / nonce from RPC with graceful fallback."""
+        assert isinstance(address, str), "Address must be string"
+        assert chain_id > 0, "Chain ID must be positive"
+        rpc_url = PUBLIC_RPC_URLS.get(chain_id)
+        if not rpc_url:
+            return None
+        try:
+            with httpx.Client(timeout=3.0) as client:
+                resp = client.post(
+                    rpc_url,
+                    json={
+                        "jsonrpc": "2.0",
+                        "method": "eth_getTransactionCount",
+                        "params": [address, "pending"],
+                        "id": 1,
+                    },
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if "result" in data and isinstance(data["result"], str):
+                        return int(data["result"], 16)
+        except Exception:
+            return None
+        return None
+
+    def _execute_remote_relay(
+        self, req: TxExecutionRequest, current_nonce: int
+    ) -> tuple[TxExecutionResponse | None, str | None]:
+        """Forward transaction payload to live KeeperHub REST Relay."""
+        assert req is not None, "Request must be provided"
+        assert current_nonce >= 0, "Nonce must be non-negative"
+        with httpx.Client(timeout=DEFAULT_REQUEST_TIMEOUT) as client:
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            }
+            resp = client.post(
+                f"{self.api_url}/relay/tx", json=req.model_dump(), headers=headers
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                tx_hash = data.get(
+                    "tx_hash", self._compute_tx_hash(req, current_nonce)
+                )
+                response = TxExecutionResponse(
+                    success=True,
+                    tx_hash=tx_hash,
+                    chain_id=req.chain_id,
+                    nonce=data.get("nonce", current_nonce),
+                    gas_used=data.get("gas_used", 42000),
+                    effective_gas_price_gwei=data.get(
+                        "effective_gas_price_gwei", 1.5
+                    ),
+                    status="CONFIRMED",
+                    audit_receipt=data.get(
+                        "audit_receipt",
+                        {"relay_status": "RELAYED_VIA_KEEPERHUB_LIVE"},
+                    ),
+                )
+                return response, None
+            error_msg = f"KeeperHub relay returned HTTP {resp.status_code}: {resp.text[:200]}"
+            return None, error_msg
+
+    def _execute_local_simulation(
+        self, req: TxExecutionRequest, current_nonce: int, attempt: int
+    ) -> TxExecutionResponse:
+        """Local deterministic cryptographic execution simulation."""
+        assert req is not None, "Request must be valid"
+        assert current_nonce >= 0, "Nonce must be non-negative"
+        tx_hash = self._compute_tx_hash(req, current_nonce)
+        gas_used = 42000 if len(req.calldata_hex) > 2 else 21000
+        eff_gas_price = 1.5 if req.chain_id == 8453 else 25.0
+
+        audit_receipt: dict[str, Any] = {
+            "relay_status": "RELAYED_VIA_KEEPERHUB",
+            "mev_shield_active": bool(self.api_key),
+            "attempt_number": attempt,
+            "idempotency_key": req.idempotency_key,
+            "submitted_at_epoch": int(time.time()),
+            "idempotent_hit": False,
+        }
+
+        if self.audit_verifier:
+            self.audit_verifier.register_transaction(tx_hash)
+
+        return TxExecutionResponse(
+            success=True,
+            tx_hash=tx_hash,
+            chain_id=req.chain_id,
+            nonce=current_nonce,
+            gas_used=gas_used,
+            effective_gas_price_gwei=eff_gas_price,
+            status="CONFIRMED",
+            audit_receipt=audit_receipt,
+        )
+
     def execute_transaction(
         self, req: TxExecutionRequest, simulate_failure: bool = False
     ) -> TxExecutionResponse:
@@ -49,14 +148,12 @@ class KeeperRelayClient:
         assert req is not None, "Request object required"
         assert isinstance(req.chain_id, int), "Chain ID must be integer"
 
-        # Check Idempotency Key
         if req.idempotency_key and req.idempotency_key in self._idempotency_cache:
             cached = self._idempotency_cache[req.idempotency_key].model_copy()
             if cached.audit_receipt:
                 cached.audit_receipt["idempotent_hit"] = True
             return cached
 
-        # Deterministic Dry Run Simulation (Does not broadcast, does not mutate cache or ledger)
         if req.dry_run:
             gas_used = 42000 if len(req.calldata_hex) > 2 else 21000
             eff_gas_price = 1.5 if req.chain_id == 8453 else 25.0
@@ -77,10 +174,9 @@ class KeeperRelayClient:
                 },
             )
 
-        current_nonce = 101
+        fetched_nonce = self._fetch_onchain_nonce(req.target_address, req.chain_id)
+        current_nonce = fetched_nonce if fetched_nonce is not None else 101
         last_error = None
-
-        # Bounded Loop (Deterministic Safety Rule 2: Loop must have a fixed upper bound)
 
         for attempt in range(1, self.max_retries + 1):
             assert attempt <= self.max_retries, "Loop invariant violated"
@@ -90,92 +186,25 @@ class KeeperRelayClient:
                 continue
 
             try:
-                # If real live API key is set, forward to live KeeperHub REST Relay.
-                # A configured key means the caller expects a real broadcast, so a
-                # non-200 response is a genuine failure for this attempt - it must
-                # never silently fall through to the local simulation below, which
-                # would fabricate a "CONFIRMED" result for a transaction that was
-                # never actually relayed anywhere.
                 if self.api_key:
-                    with httpx.Client(timeout=DEFAULT_REQUEST_TIMEOUT) as client:
-                        headers = {
-                            "Authorization": f"Bearer {self.api_key}",
-                            "Content-Type": "application/json",
-                        }
-                        payload = req.model_dump()
-                        resp = client.post(
-                            f"{self.api_url}/relay/tx", json=payload, headers=headers
-                        )
-                        if resp.status_code == 200:
-                            data = resp.json()
-                            tx_hash = data.get(
-                                "tx_hash", self._compute_tx_hash(req, current_nonce)
-                            )
-                            response = TxExecutionResponse(
-                                success=True,
-                                tx_hash=tx_hash,
-                                chain_id=req.chain_id,
-                                nonce=data.get("nonce", current_nonce),
-                                gas_used=data.get("gas_used", 42000),
-                                effective_gas_price_gwei=data.get(
-                                    "effective_gas_price_gwei", 1.5
-                                ),
-                                status="CONFIRMED",
-                                audit_receipt=data.get(
-                                    "audit_receipt",
-                                    {"relay_status": "RELAYED_VIA_KEEPERHUB_LIVE"},
-                                ),
-                            )
-                            if self.audit_verifier:
-                                self.audit_verifier.register_transaction(tx_hash)
-                            if req.idempotency_key:
-                                self._idempotency_cache[req.idempotency_key] = response
-                            return response
+                    resp, err = self._execute_remote_relay(req, current_nonce)
+                    if resp is not None:
+                        if self.audit_verifier and resp.tx_hash:
+                            self.audit_verifier.register_transaction(resp.tx_hash)
+                        if req.idempotency_key:
+                            self._idempotency_cache[req.idempotency_key] = resp
+                        return resp
+                    last_error = err
+                    current_nonce += 1
+                    time.sleep(0.05)
+                    continue
 
-                        last_error = (
-                            f"KeeperHub relay returned HTTP {resp.status_code}: "
-                            f"{resp.text[:200]}"
-                        )
-                        current_nonce += 1
-                        time.sleep(0.05)
-                        continue
-
-                # Local Deterministic Cryptographic Execution Simulation
-                # (only reached when no live API key is configured at all)
-                tx_hash = self._compute_tx_hash(req, current_nonce)
-                gas_used = 42000 if len(req.calldata_hex) > 2 else 21000
-                eff_gas_price = 1.5 if req.chain_id == 8453 else 25.0
-
-                audit_receipt = {
-                    "relay_status": "RELAYED_VIA_KEEPERHUB",
-                    "mev_shield_active": True,
-                    "attempt_number": attempt,
-                    "idempotency_key": req.idempotency_key,
-                    "submitted_at_epoch": int(time.time()),
-                    "idempotent_hit": False,
-                }
-
-                # Register in state ledger
-                if self.audit_verifier:
-                    self.audit_verifier.register_transaction(tx_hash)
-
-                response = TxExecutionResponse(
-                    success=True,
-                    tx_hash=tx_hash,
-                    chain_id=req.chain_id,
-                    nonce=current_nonce,
-                    gas_used=gas_used,
-                    effective_gas_price_gwei=eff_gas_price,
-                    status="CONFIRMED",
-                    audit_receipt=audit_receipt,
-                )
-
+                response = self._execute_local_simulation(req, current_nonce, attempt)
                 if req.idempotency_key:
                     if len(self._idempotency_cache) >= 1024:
                         oldest_key = next(iter(self._idempotency_cache))
                         del self._idempotency_cache[oldest_key]
                     self._idempotency_cache[req.idempotency_key] = response
-
                 return response
 
             except Exception as e:
@@ -183,7 +212,6 @@ class KeeperRelayClient:
                 current_nonce += 1
                 time.sleep(0.05)
 
-        # Loop exhausted
         return TxExecutionResponse(
             success=False,
             chain_id=req.chain_id,
