@@ -8,7 +8,7 @@
 **BUIDL Profile:** [#48196](https://dorahacks.io/buidl/48196)  
 **Author / Contributor:** Ishant Panchal (`Ishant5436` / `ishant.p@somaiya.edu`)  
 **Repository:** [https://github.com/Ishant5436/agent-keeper-mcp](https://github.com/Ishant5436/agent-keeper-mcp)  
-**Upstream Integration:** [KeeperHub PR #2188](https://github.com/KeeperHub/keeperhub/pull/2188) & [Tracking Issue #2310](https://github.com/KeeperHub/keeperhub/issues/2310)  
+**Upstream Integration:** [KeeperHub PR #2547](https://github.com/KeeperHub/keeperhub/pull/2547) & [Tracking Issue #2310](https://github.com/KeeperHub/keeperhub/issues/2310)  
 
 ---
 
