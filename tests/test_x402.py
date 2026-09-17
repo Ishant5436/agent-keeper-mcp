@@ -45,3 +45,18 @@ def test_cumulative_safety_budget_exhaustion():
     res2 = mgr.settle_payment(req)
     assert res2.success is False
     assert "Cumulative budget exceeded" in res2.error
+
+
+def test_x402_settlement_on_arc_mainnet():
+    mgr = X402PaymentManager()
+    req = X402PaymentRequest(
+        resource_url="https://api.arc.quant/v1/feed",
+        amount_usdc=0.25,
+        recipient_address="0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+        chain_id=5042,
+    )
+    res = mgr.settle_payment(req)
+    assert res.success is True
+    assert res.payment_hash.startswith("0x")
+    assert res.signature is not None
+    assert len(res.signature) == 132

@@ -2,8 +2,9 @@
 
 > A non-custodial Model Context Protocol (MCP) server that gives autonomous AI agents a safe execution gateway to EVM networks and HTTP 402 paywalled APIs.
 
-[![Tests](https://img.shields.io/badge/tests-104%2F104%20passing-brightgreen)](https://github.com/Ishant5436/agent-keeper-mcp)
+[![Tests](https://img.shields.io/badge/tests-106%2F106%20passing-brightgreen)](https://github.com/Ishant5436/agent-keeper-mcp)
 [![CI](https://github.com/Ishant5436/agent-keeper-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Ishant5436/agent-keeper-mcp/actions)
+[![Arc Mainnet](https://img.shields.io/badge/Arc%20Mainnet-Native%20USDC%20(5042)-teal)](https://explorer.arc.io)
 [![Creditcoin](https://img.shields.io/badge/Creditcoin%203.0-Attestcoin%20Settlement-blue)](src/agent_keeper/creditcoin.py)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Upstream PR](https://img.shields.io/badge/KeeperHub-PR%20%232188-orange)](https://github.com/KeeperHub/keeperhub/pull/2188)
@@ -46,8 +47,8 @@ AgentKeeper sits as a local middleware between the LLM runtime and blockchain ne
 └──────────────┬───────────────────────────┬─────────────┘
                │                           │
                ▼                           ▼
-      EVM / L2 Networks           x402 Paywalled APIs
-   (Base / Arbitrum / Mantle)    (Per-token Data Feeds)
+       EVM / L2 Networks           x402 Paywalled APIs
+    (Arc / Base / Arb / Mantle)    (Per-token Data Feeds)
 ```
 
 ---
@@ -123,20 +124,21 @@ pytest
 ```
 ============================== test session starts ==============================
 platform darwin -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0
-collected 98 items
+collected 106 items
 
-tests/test_audit.py ....                                                 [  4%]
-tests/test_blackbox.py .................                                 [ 21%]
-tests/test_creditcoin.py ...................................             [ 59%]
-tests/test_fuzz_merkle.py ....                                           [ 63%]
-tests/test_merkle_tree.py ..                                             [ 65%]
-tests/test_relay.py ....                                                 [ 69%]
-tests/test_schemas.py .........                                          [ 78%]
-tests/test_server.py .......                                             [ 85%]
-tests/test_whitebox.py ............                                      [ 97%]
-tests/test_x402.py ...                                                   [100%]
+tests/test_audit.py ....                                                 [  3%]
+tests/test_blackbox.py .................                                 [ 19%]
+tests/test_creditcoin.py .....................................           [ 54%]
+tests/test_fuzz_merkle.py ....                                           [ 58%]
+tests/test_merkle_tree.py ..                                             [ 60%]
+tests/test_relay.py ....                                                 [ 64%]
+tests/test_schemas.py ..........                                         [ 73%]
+tests/test_server.py .......                                             [ 80%]
+tests/test_whitebox.py ...........                                       [ 90%]
+tests/test_workflow.py ......                                            [ 96%]
+tests/test_x402.py ....                                                  [100%]
 
-============================== 98 passed in 7.92s ==============================
+============================= 106 passed in 13.38s =============================
 ```
 
 * **Deterministic Invariants:** Bounded retry loops, minimum 2 runtime assertions per function, zero dynamic heap allocations on execution path.

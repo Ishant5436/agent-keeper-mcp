@@ -150,7 +150,8 @@ def test_unsupported_chain_id_rejection():
 
 
 def test_all_supported_chain_ids_accepted():
-    """White-box test: all 7 registered chain IDs pass validation."""
+    """White-box test: all registered chain IDs pass validation."""
+    assert 5042 in SUPPORTED_CHAINS
     for chain_id in SUPPORTED_CHAINS.keys():
         req = TxExecutionRequest(
             target_address="0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
