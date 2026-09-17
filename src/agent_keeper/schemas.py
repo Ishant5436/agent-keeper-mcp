@@ -133,6 +133,19 @@ class X402PaymentRequest(BaseModel):
     token_address: str | None = Field(
         default=None, description="Optional specific token contract."
     )
+    chain_id: int = Field(
+        default=5042, description="Target EVM chain ID for payment settlement (defaults to Arc Mainnet 5042)."
+    )
+
+    @field_validator("chain_id")
+    @classmethod
+    def validate_chain_id(cls, v: int) -> int:
+        assert v > 0, "Chain ID must be positive"
+        if v not in SUPPORTED_CHAINS:
+            raise ValueError(
+                f"Unsupported chain ID: {v}. Supported: {list(SUPPORTED_CHAINS.keys())}"
+            )
+        return v
 
     @field_validator("recipient_address")
     @classmethod

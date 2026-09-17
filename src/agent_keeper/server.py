@@ -67,10 +67,13 @@ def _query_rpc_balance(address: str, chain_id: int) -> dict[str, Any]:
                 result = resp.json().get("result")
                 if result and isinstance(result, str):
                     val_wei = int(result, 16)
-                    val_eth = val_wei / 10**18
+                    decimals = 6 if chain_id == 5042 else 18
+                    val_eth = val_wei / 10**decimals
                     return {
                         "balance_wei": val_wei,
                         "balance_eth": round(val_eth, 6),
+                        "balance_native": round(val_eth, 6),
+                        "symbol": "USDC" if chain_id == 5042 else "ETH",
                         "source": "live_rpc",
                     }
     except Exception as e:
@@ -113,6 +116,7 @@ def keeper_x402_settle(
     amount_usdc: float,
     recipient_address: str,
     token_address: str | None = None,
+    chain_id: int = 5042,
 ) -> dict[str, Any]:
     """Autonomously settle an HTTP 402 Payment Required challenge using EIP-712 payment permits."""
     try:
@@ -121,6 +125,7 @@ def keeper_x402_settle(
             amount_usdc=amount_usdc,
             recipient_address=recipient_address,
             token_address=token_address,
+            chain_id=chain_id,
         )
         res = _payment_manager.settle_payment(req)
         return res.model_dump()
@@ -154,22 +159,26 @@ def keeper_agent_balance(address: str | None = None) -> dict[str, Any]:
     target_addr = address or _payment_manager.signer_address
 
     chain_queries = {
+        "Arc Mainnet (5042)": (5042, _query_rpc_balance(target_addr, 5042)),
         "Base Mainnet (8453)": (8453, _query_rpc_balance(target_addr, 8453)),
         "Arbitrum One (42161)": (42161, _query_rpc_balance(target_addr, 42161)),
         "Ethereum Mainnet (1)": (1, _query_rpc_balance(target_addr, 1)),
     }
 
     balances: dict[str, Any] = {}
-    for name, (_, data) in chain_queries.items():
+    for name, (cid, data) in chain_queries.items():
+        sym = "USDC" if cid == 5042 else "ETH"
         if data.get("source") == "live_rpc":
             balances[name] = {
-                "ETH": f"{data.get('balance_eth', 0.0):.6f} ETH",
+                "ETH": f"{data.get('balance_eth', 0.0):.6f} {sym}",
+                sym: f"{data.get('balance_eth', 0.0):.6f} {sym}",
                 "wei": data.get("balance_wei", 0),
                 "source": "live_rpc",
             }
         else:
             balances[name] = {
-                "ETH": "0.000000 ETH",
+                "ETH": f"0.000000 {sym}",
+                sym: f"0.000000 {sym}",
                 "source": data.get("source", "unreachable"),
                 "status": "sandbox_operational",
             }

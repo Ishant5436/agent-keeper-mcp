@@ -56,7 +56,7 @@ class X402PaymentManager:
             "domain": {
                 "name": "KeeperHub x402 Gateway",
                 "version": "1",
-                "chainId": 8453,  # Base Mainnet
+                "chainId": getattr(req, "chain_id", 5042),
                 "verifyingContract": "0x4020000000000000000000000000000000000402",
             },
             "message": {
