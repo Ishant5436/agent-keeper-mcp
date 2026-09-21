@@ -6,7 +6,7 @@
 **Prize Pool:** $15,000 USD  
 **Author:** Ishant Panchal (`Ishant5436` / `ishant.p@somaiya.edu`)  
 **Repository:** [https://github.com/Ishant5436/agent-keeper-mcp](https://github.com/Ishant5436/agent-keeper-mcp)  
-**Upstream Integration:** [KeeperHub PR #2188](https://github.com/KeeperHub/keeperhub/pull/2188)  
+**Upstream Integration:** [KeeperHub PR #2547](https://github.com/KeeperHub/keeperhub/pull/2547)  
 
 ---
 
@@ -76,39 +76,67 @@ The implementation strictly satisfies the Power of 10 Safety Invariants:
 | **Rule 7: Check Returns & Parameters** | Strict input validation | EIP-55 checksum, calldata byte limits (128KB), wei spending caps. |
 | **Rule 8: Minimal Metaprogramming** | Zero dynamic code evaluation | Strict Pydantic schemas; zero `eval()`, `exec()`, or dynamic monkey-patching. |
 | **Rule 9: Restrict Pointer Indirection** | Single-level reference traversal | Flat contiguous array indexing `((i-1) >> 1)` rather than deep pointer-node trees. |
-| **Rule 10: Static Analysis & Tests** | 100% test pass rate, 0 warnings | 104/104 passing test suite (including 5,000-case Hypothesis property fuzz tests) & 0 flake8 warnings. |
-
+| **Rule 10: Static Analysis & Tests** | 100% test pass rate, 0 warnings | 106/106 passing test suite (including 5,000-case Hypothesis property fuzz tests) & 0 ruff warnings. |
 
 ---
 
-## 4. Creditcoin 3.0 Track Alignment
+## 4. ISO/DIS 9001:2026 Quality Management System & CertiK-Readiness
+
+AgentKeeper-MCP is engineered to institutional software quality management standards. To ensure qualification for production mainnet deployment and the **BUIDL CTC CertiK Audit Award ($8,000 credit)**, the repository integrates an automated QMS compliance auditor:
+
+| ISO/DIS 9001:2026 Clause | Metric & Standard Enforced | Status |
+| :--- | :--- | :--- |
+| **Clause 4: Context & Infrastructure** | Multi-chain config (Arc, Base, Arb, Mantle, CTC), FastMCP stdio server | `[✓ PASS] 100%` |
+| **Clause 5: Leadership & Quality** | Formal Quality Manual (`QUALITY_MANUAL.md`), Zero-Defect Policy | `[✓ PASS] 100%` |
+| **Clause 6: Planning & Risk** | Formal Risk Register (`RISK_REGISTER.md`), Merkle depth bounds ($\le 64$), EIP-55 checksum | `[✓ PASS] 100%` |
+| **Clause 7: Support & Qualification** | Typed Pydantic schemas, Ruff static analysis, Python 3.12 pinned runtime | `[✓ PASS] 100%` |
+| **Clause 8: Operation & V&V** | Traceability Matrix (`TRACEABILITY_MATRIX.md`), 106 automated tests, FastMCP integration | `[✓ PASS] 100%` |
+| **Clause 9: Performance Evaluation** | Dynamic Oracle Anchoring verification, Arc Mainnet live query, GitHub Actions CI | `[✓ PASS] 100%` |
+| **Clause 10: Continual Improvement** | Hypothesis property fuzz engine (5,000 iterations), automated QMS script audit | `[✓ PASS] 100%` |
+
+---
+
+## 5. Creditcoin 3.0 Track Alignment
 
 `AgentKeeper-MCP` natively supports both **Creditcoin Mainnet (Chain ID 1024)** and **Creditcoin Testnet (Chain ID 102031)**:
-* **Attestcoin Proof Settlement (`keeper_creditcoin_settle`):** Validates that cross-chain solver tasks initiated on L2s (Arbitrum, Base, Mantle) are cryptographically matched to valid transaction hashes via real Merkle branch proofs before releasing escrowed CTC funds. Enforces registered solver addresses and on-chain oracle root anchoring.
+* **Attestcoin Proof Settlement (`keeper_creditcoin_settle`):** Validates that cross-chain solver tasks initiated on L2s (Arbitrum, Base, Mantle, Arc) are cryptographically matched to valid transaction hashes via real Merkle branch proofs before releasing escrowed CTC funds. Enforces registered solver addresses and on-chain oracle root anchoring.
 * **Non-Custodial Architecture:** Solvers receive programmatic EIP-712 payment promises that can be verified and claimed onchain without human coordinator intervention.
 * **Deterministic Accounting:** Bounded state tracking guarantees that solver balances and fees remain fully solvent under high-throughput request loads.
 
 ---
 
-## 5. Judge Reproduction & Verification Guide
+## 6. Judge Reproduction & Verification Guide
 
 ```bash
 # 1. Clone & Enter Repository
 git clone https://github.com/Ishant5436/agent-keeper-mcp.git
 cd agent-keeper-mcp
 
-# 2. Execute Automated Test Suite (98 Tests Passing)
+# 2. Execute Automated Test Suite (106 Tests Passing)
 make test
 
-# 3. Run Interactive Demonstrator
+# 3. Verify ISO/DIS 9001:2026 Compliance (7/7 Clauses)
+make audit-iso9001
+
+# 4. Run Interactive Demonstrator (All 5 Onchain Workflows)
 make demo
 ```
 
 ### Verification Telemetry Output:
 ```
-============================== 98 passed in 7.92s ==============================
+============================= 106 passed in 11.71s =============================
+[✓ PASS] Clause 4: Context & Digital Infrastructure (4/4 requirements)
+[✓ PASS] Clause 5: Leadership & Quality Culture (3/3 requirements)
+[✓ PASS] Clause 6: Planning & Risk-Based Thinking (4/4 requirements)
+[✓ PASS] Clause 7: Support & Tool Qualification (3/3 requirements)
+[✓ PASS] Clause 8: Operation & Software V&V (4/4 requirements)
+[✓ PASS] Clause 9: Performance Evaluation & Audit Trails (3/3 requirements)
+[✓ PASS] Clause 10: Continual Improvement & Defect Containment (2/2 requirements)
+Final Compliance Score: 100.0% (7/7 Clauses Compliant)
+
 [SUCCESS] FlatMerkleTree: O(log N) inclusion proofs verified
 [SUCCESS] Creditcoin 3.0: Attestcoin solver escrow & reimbursement confirmed
-[SUCCESS] EIP-712: MicroPaymentPermit signed within daily allowance ($10.00)
+[SUCCESS] EIP-712: MicroPaymentPermit signed within daily allowance ($5.00)
 [SUCCESS] FastMCP: 5 tool interfaces active with Power of 10 safety invariants
+[SUCCESS] All 5 Autonomous Onchain Workflows Verified Successfully!
 ```
