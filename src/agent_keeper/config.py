@@ -4,6 +4,8 @@ AgentKeeper Configuration & Safety Invariants
 
 import os
 
+ARC_MAINNET_CHAIN_ID: int = 5042
+
 # Default Supported EVM Chains
 SUPPORTED_CHAINS: dict[int, str] = {
     1: "Ethereum Mainnet",

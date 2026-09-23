@@ -12,6 +12,9 @@ audit-iso9001:
 demo:
 	python3 demo.py
 
+demo-arc:
+	uv run python scripts/demo_arc_mainnet.py
+
 lint:
 	uv run ruff check src/ tests/
 
