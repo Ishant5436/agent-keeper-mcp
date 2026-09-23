@@ -1,7 +1,7 @@
-# KeeperHub - The Agent Economy Hackathon — Technical Submission Dossier
+# KeeperHub - The Agent Economy Hackathon -- Technical Submission Dossier
 
 **Hackathon:** KeeperHub - The Agent Economy Hackathon (DoraHacks)  
-**Timeline:** September 6 – September 18, 2026  
+**Timeline:** September 6 - September 18, 2026  
 **Prize Pool:** $5,000 USD  
 **Target Bounty:** Best KeeperHub Feature ($1,000 USDC)  
 **Project Name:** AgentKeeper-MCP  
@@ -14,43 +14,43 @@
 
 ## 1. Executive Summary & Hackathon Theme Alignment
 
-The core challenge of the **Agent Economy** is non-deterministic execution. Because Large Language Models are probabilistic reasoning engines, allowing an AI agent to directly construct and broadcast raw on-chain transactions introduces three catastrophic failure modes:
+The core challenge of the **Agent Economy** is non-deterministic execution. Because autonomous models are probabilistic reasoning engines, allowing an AI agent to directly construct and broadcast raw on-chain transactions introduces three catastrophic failure modes:
 1. **Reinterpretation & Value Drift:** Agents hallucinate calldata, invert token decimal precision, or misroute transaction outputs during volatile market conditions.
 2. **Credential Exfiltration:** Injecting private keys or RPC authentication tokens into the model context window exposes credentials to prompt injection attacks and chat log leaks.
 3. **Execution Desynchronization:** Rapid agent re-prompting generates concurrent transactions with nonce collisions, leading to stranded mempool transactions and burned gas.
 
-**AgentKeeper-MCP** solves this by establishing a strictly isolated Model Context Protocol (MCP) gateway adhering to Deterministic Safety Invariants (Gerard J. Holzmann's Power of 10). It enables autonomous agents (Claude, Gemini, Cursor) to compose multi-step execution workflows, perform deterministic pre-flight dry runs, and enforce hard safety ceilings *before* any value transfer reaches the network.
+**AgentKeeper-MCP** provides a Model Context Protocol (MCP) gateway with bounded memory structures, local key isolation, and pre-flight simulation. It enables autonomous agents (IDE integrations, autonomous CLI agents, custom bots) to compose multi-step execution workflows, inspect balances, and enforce spending ceilings before transactions reach the network.
 
 ---
 
 ## 2. System Architecture
 
 ```
-┌───────────────────────────────────────────────────────────────────────────────────┐
-│                    LLM Agent Client (Claude / Cursor / Gemini)                    │
-└─────────────────────────────────────────┬─────────────────────────────────────────┘
-                                          │ stdio / JSON-RPC 2.0 (FastMCP)
-                                          ▼
-┌───────────────────────────────────────────────────────────────────────────────────┐
-│                                 AgentKeeper-MCP                                   │
-│                                                                                   │
-│  ┌───────────────────────┐ ┌────────────────────────┐ ┌────────────────────────┐  │
-│  │ keeper_plan_workflow  │ │ keeper_execute_tx      │ │ keeper_x402_settle     │  │
-│  │ Multi-Step Composer   │ │ MEV-Shield & Gas Relay │ │ EIP-712 Permit Signer  │  │
-│  │ & Pre-Flight Dry-Run  │ │ (dry_run=True preview) │ │ HTTP 402 Micro-Gating  │  │
-│  └──────────┬────────────┘ └───────────┬────────────┘ └───────────┬────────────┘  │
-│             │                          │                          │               │
-│             ▼                          ▼                          ▼               │
-│  ┌─────────────────────────────────────────────────────────────────────────────┐  │
-│  │ keeper_audit_verify     │ keeper_agent_balance   │ keeper_creditcoin_settle │  │
-│  │ Flat-Array Merkle Proof │ Multi-Chain RPC Budget │ Attestcoin Cross-Chain   │  │
-│  │ Verification (O(log N)) │ Inspector & Safeguard  │ Solver Escrow Settlement │  │
-│  └─────────────────────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────┬─────────────────────────────────────────┘
-                                          │
-                  ┌───────────────────────┴───────────────────────┐
-                  ▼                                               ▼
-     EVM Networks (Base, OP, Mantle)               KeeperHub Gateway / REST Relay
++-----------------------------------------------------------------------------------+
+|               Agent Client Runner (IDE / Autonomous CLI / Host)                   |
++-----------------------------------------+-----------------------------------------+
+                                          | stdio / JSON-RPC 2.0 (FastMCP)
+                                          v
++-----------------------------------------------------------------------------------+
+|                                 AgentKeeper-MCP                                   |
+|                                                                                   |
+|  +-----------------------+ +------------------------+ +------------------------+  |
+|  | keeper_plan_workflow  | | keeper_execute_tx      | | keeper_x402_settle     |  |
+|  | Multi-Step Composer   | | MEV-Shield & Gas Relay | | EIP-712 Permit Signer  |  |
+|  | & Pre-Flight Dry-Run  | | (dry_run=True preview) | | HTTP 402 Micro-Gating  |  |
+|  +----------+------------+ +-----------+------------+ +-----------+------------+  |
+|             |                          |                          |               |
+|             v                          v                          v               |
+|  +-----------------------------------------------------------------------------+  |
+|  | keeper_audit_verify     | keeper_agent_balance   | keeper_creditcoin_settle |  |
+|  | Flat-Array Merkle Proof | Multi-Chain RPC Budget | Attestcoin Cross-Chain   |  |
+|  | Verification (O(log N)) | Inspector & Safeguard  | Solver Escrow Settlement |  |
+|  +-----------------------------------------------------------------------------+  |
++-----------------------------------------+-----------------------------------------+
+                                          |
+                   +----------------------+-----------------------+
+                   v                                              v
+      EVM Networks (Base, OP, Mantle)               KeeperHub Gateway / REST Relay
 ```
 
 ---
@@ -85,7 +85,7 @@ Inspects live on-chain balances across Base, Arbitrum One, Ethereum Mainnet, and
 
 ---
 
-## 4. Power of 10 Deterministic Safety Invariants Audit
+## 4. Static Invariants & Code Constraints
 
 | Invariant | Enforced Standard | Verified Implementation |
 | :--- | :--- | :--- |
@@ -135,8 +135,8 @@ make test
 # 2. Launch Interactive Terminal Demo (Offline Mock Relay)
 make demo
 
-# 3. Register with Claude Desktop / Claude Code
-# Add to ~/.claude.json or claude_desktop_config.json:
+# 3. Register with MCP Host Application
+# Add to mcp_config.json:
 {
   "mcpServers": {
     "agent-keeper": {

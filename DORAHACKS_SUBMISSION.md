@@ -12,38 +12,38 @@
 
 ## 1. Abstract & System Architecture
 
-Autonomous Large Language Model (LLM) agents operating onchain face a fundamental trilemma: **context credential exposure**, **state desynchronization (nonce collisions)**, and **unhandled HTTP 402 resource gating**. When private keys or RPC URLs are injected into an LLM's conversational context, any unhandled revert or stack trace risks leaking keys into chat logs, prompt caches, or fine-tuning datasets.
+Autonomous onchain execution agents face a fundamental trilemma: **context credential exposure**, **state desynchronization (nonce collisions)**, and **unhandled HTTP 402 resource gating**. When private keys or RPC URLs are injected into an agent's conversational context, any unhandled revert or stack trace risks leaking keys into chat logs, prompt caches, or model fine-tuning sets.
 
-`AgentKeeper-MCP` resolves this through a strictly isolated Model Context Protocol (MCP) gateway adhering to Deterministic Safety Invariants (Power of 10). Private keys remain isolated in local non-swappable process memory, while the agent interacts strictly via typed JSON-RPC tools with bounded inputs, EIP-712 structured permits, and cryptographic audit proofs.
+`AgentKeeper-MCP` resolves this through a Model Context Protocol (MCP) gateway with bounded memory structures and local key isolation. Private keys remain in local process memory, while the agent interacts strictly via typed JSON-RPC tools with bounded inputs, EIP-712 structured permits, and cryptographic audit proofs.
 
 For the **Creditcoin 3.0 ecosystem**, AgentKeeper implements an autonomous **Attestcoin Cross-Chain Solver Escrow Manager**, allowing AI agents on EVM chains (Arbitrum, Base, Mantle, Ethereum) to request cross-chain computational resources and settle solver reimbursements via cryptographic Merkle inclusion proofs.
 
 ```
-┌───────────────────────────────────────────────────────────────────────────────────┐
-│                    LLM Agent Client (Claude / Cursor / Custom)                    │
-└─────────────────────────────────────────┬─────────────────────────────────────────┘
-                                          │ stdio / JSON-RPC 2.0 (FastMCP)
-                                          ▼
-┌───────────────────────────────────────────────────────────────────────────────────┐
-│                                 AgentKeeper-MCP                                   │
-│                                                                                   │
-│  ┌───────────────────────┐ ┌────────────────────────┐ ┌────────────────────────┐  │
-│  │ keeper_execute_tx     │ │ keeper_x402_settle     │ │ keeper_audit_verify    │  │
-│  │ Non-Custodial Key     │ │ EIP-712 Permit Signer  │ │ Flat Array Merkle Heap │  │
-│  │ Sandbox & Idempotency │ │ Micro-Payment Gating   │ │ Cryptographic Audit    │  │
-│  └──────────┬────────────┘ └───────────┬────────────┘ └───────────┬────────────┘  │
-│             │                          │                          │               │
-│             ▼                          ▼                          ▼               │
-│  ┌─────────────────────────────────────────────────────────────────────────────┐  │
-│  │ [4] keeper_agent_balance    │ [5] keeper_creditcoin_settle                  │  │
-│  │ Multi-Chain RPC Budget      │ Attestcoin Merkle O(log N) Solver Settlement  │  │
-│  └─────────────────────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────┬─────────────────────────────────────────┘
-                                          │
-                  ┌───────────────────────┴───────────────────────┐
-                  ▼                                               ▼
-     EVM Networks (Base, OP, Mantle)               Creditcoin 3.0 L1 / x402 APIs
-   (Onchain Contract Execution)                     (Attestcoin Solver Settlement)
++-----------------------------------------------------------------------------------+
+|               Agent Client Runner (IDE / Autonomous CLI / Host)                   |
++-----------------------------------------+-----------------------------------------+
+                                          | stdio / JSON-RPC 2.0 (FastMCP)
+                                          v
++-----------------------------------------------------------------------------------+
+|                                 AgentKeeper-MCP                                   |
+|                                                                                   |
+|  +-----------------------+ +------------------------+ +------------------------+  |
+|  | keeper_execute_tx     | | keeper_x402_settle     | | keeper_audit_verify    |  |
+|  | Non-Custodial Key     | | EIP-712 Permit Signer  | | Flat Array Merkle Heap |  |
+|  | Sandbox & Idempotency | | Micro-Payment Gating   | | Cryptographic Audit    |  |
+|  +----------+------------+ +-----------+------------+ +-----------+------------+  |
+|             |                          |                          |               |
+|             v                          v                          v               |
+|  +-----------------------------------------------------------------------------+  |
+|  | [4] keeper_agent_balance    | [5] keeper_creditcoin_settle                  |  |
+|  | Multi-Chain RPC Budget      | Attestcoin Merkle O(log N) Solver Settlement  |  |
+|  +-----------------------------------------------------------------------------+  |
++-----------------------------------------+-----------------------------------------+
+                                          |
+                   +----------------------+-----------------------+
+                   v                                              v
+      EVM Networks (Base, OP, Mantle)               Creditcoin 3.0 L1 / x402 APIs
+    (Onchain Contract Execution)                     (Attestcoin Solver Settlement)
 ```
 
 ---
@@ -61,9 +61,9 @@ Every core data structure in `AgentKeeper-MCP` is engineered with explicit time 
 
 ---
 
-## 3. Power of 10 Deterministic Safety Invariants Audit
+## 3. Code Quality Invariants & Safety Constraints
 
-The implementation strictly satisfies the Power of 10 Safety Invariants:
+The implementation enforces strict software constraints:
 
 | Invariant | Standard Enforced | Implementation Evidence |
 | :--- | :--- | :--- |
@@ -86,13 +86,13 @@ AgentKeeper-MCP is engineered to institutional software quality management stand
 
 | ISO/DIS 9001:2026 Clause | Metric & Standard Enforced | Status |
 | :--- | :--- | :--- |
-| **Clause 4: Context & Infrastructure** | Multi-chain config (Arc, Base, Arb, Mantle, CTC), FastMCP stdio server | `[✓ PASS] 100%` |
-| **Clause 5: Leadership & Quality** | Formal Quality Manual (`QUALITY_MANUAL.md`), Zero-Defect Policy | `[✓ PASS] 100%` |
-| **Clause 6: Planning & Risk** | Formal Risk Register (`RISK_REGISTER.md`), Merkle depth bounds ($\le 64$), EIP-55 checksum | `[✓ PASS] 100%` |
-| **Clause 7: Support & Qualification** | Typed Pydantic schemas, Ruff static analysis, Python 3.12 pinned runtime | `[✓ PASS] 100%` |
-| **Clause 8: Operation & V&V** | Traceability Matrix (`TRACEABILITY_MATRIX.md`), 106 automated tests, FastMCP integration | `[✓ PASS] 100%` |
-| **Clause 9: Performance Evaluation** | Dynamic Oracle Anchoring verification, Arc Mainnet live query, GitHub Actions CI | `[✓ PASS] 100%` |
-| **Clause 10: Continual Improvement** | Hypothesis property fuzz engine (5,000 iterations), automated QMS script audit | `[✓ PASS] 100%` |
+| **Clause 4: Context & Infrastructure** | Multi-chain config (Arc, Base, Arb, Mantle, CTC), FastMCP stdio server | `[PASS] 100%` |
+| **Clause 5: Leadership & Quality** | Formal Quality Manual (`QUALITY_MANUAL.md`), Zero-Defect Policy | `[PASS] 100%` |
+| **Clause 6: Planning & Risk** | Formal Risk Register (`RISK_REGISTER.md`), Merkle depth bounds ($\le 64$), EIP-55 checksum | `[PASS] 100%` |
+| **Clause 7: Support & Qualification** | Typed Pydantic schemas, Ruff static analysis, Python 3.12 pinned runtime | `[PASS] 100%` |
+| **Clause 8: Operation & V&V** | Traceability Matrix (`TRACEABILITY_MATRIX.md`), 106 automated tests, FastMCP integration | `[PASS] 100%` |
+| **Clause 9: Performance Evaluation** | Dynamic Oracle Anchoring verification, Arc Mainnet live query, GitHub Actions CI | `[PASS] 100%` |
+| **Clause 10: Continual Improvement** | Hypothesis property fuzz engine (5,000 iterations), automated QMS script audit | `[PASS] 100%` |
 
 ---
 
@@ -125,18 +125,18 @@ make demo
 ### Verification Telemetry Output:
 ```
 ============================= 106 passed in 11.71s =============================
-[✓ PASS] Clause 4: Context & Digital Infrastructure (4/4 requirements)
-[✓ PASS] Clause 5: Leadership & Quality Culture (3/3 requirements)
-[✓ PASS] Clause 6: Planning & Risk-Based Thinking (4/4 requirements)
-[✓ PASS] Clause 7: Support & Tool Qualification (3/3 requirements)
-[✓ PASS] Clause 8: Operation & Software V&V (4/4 requirements)
-[✓ PASS] Clause 9: Performance Evaluation & Audit Trails (3/3 requirements)
-[✓ PASS] Clause 10: Continual Improvement & Defect Containment (2/2 requirements)
+[PASS] Clause 4: Context & Digital Infrastructure (4/4 requirements)
+[PASS] Clause 5: Leadership & Quality Culture (3/3 requirements)
+[PASS] Clause 6: Planning & Risk-Based Thinking (4/4 requirements)
+[PASS] Clause 7: Support & Tool Qualification (3/3 requirements)
+[PASS] Clause 8: Operation & Software V&V (4/4 requirements)
+[PASS] Clause 9: Performance Evaluation & Audit Trails (3/3 requirements)
+[PASS] Clause 10: Continual Improvement & Defect Containment (2/2 requirements)
 Final Compliance Score: 100.0% (7/7 Clauses Compliant)
 
 [SUCCESS] FlatMerkleTree: O(log N) inclusion proofs verified
 [SUCCESS] Creditcoin 3.0: Attestcoin solver escrow & reimbursement confirmed
 [SUCCESS] EIP-712: MicroPaymentPermit signed within daily allowance ($5.00)
-[SUCCESS] FastMCP: 5 tool interfaces active with Power of 10 safety invariants
+[SUCCESS] FastMCP: 5 tool interfaces active with bounded schema validation
 [SUCCESS] All 5 Autonomous Onchain Workflows Verified Successfully!
 ```
