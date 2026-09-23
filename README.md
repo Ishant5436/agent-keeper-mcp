@@ -1,17 +1,21 @@
+<p align="center">
+  <img src="assets/logo.jpg" alt="AgentKeeper-MCP Arc Mainnet Logo" width="160" height="160" style="border-radius: 24px;" />
+</p>
+
 # AgentKeeper-MCP
 
-> A non-custodial Model Context Protocol (MCP) server that gives autonomous AI agents a safe execution gateway to EVM networks and HTTP 402 paywalled APIs.
+> A deterministic, non-custodial Model Context Protocol (MCP) execution gateway for autonomous AI agents on Arc Mainnet with native USDC gas settlement and HTTP 402 micro-payments.
 
-[![Tests](https://img.shields.io/badge/tests-106%2F106%20passing-brightgreen)](https://github.com/Ishant5436/agent-keeper-mcp)
+[![Tests](https://img.shields.io/badge/tests-112%2F112%20passing-brightgreen)](https://github.com/Ishant5436/agent-keeper-mcp)
 [![CI](https://github.com/Ishant5436/agent-keeper-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Ishant5436/agent-keeper-mcp/actions)
-[![Creditcoin](https://img.shields.io/badge/Creditcoin%203.0-Attestcoin%20Settlement-blue)](src/agent_keeper/creditcoin.py)
 [![Arc Mainnet](https://img.shields.io/badge/Arc%20Mainnet-Native%20USDC%20(5042)-teal)](https://explorer.arc.io)
+[![Creditcoin](https://img.shields.io/badge/Creditcoin%203.0-Attestcoin%20Settlement-blue)](src/agent_keeper/creditcoin.py)
 [![ISO 9001:2026](https://img.shields.io/badge/ISO%2FDIS%209001%3A2026-Certified%20QMS-success)](iso9001_compliance/QUALITY_MANUAL.md)
 [![Safety Standard](https://img.shields.io/badge/Safety%20Standard-Deterministic%20Invariants-purple)](src/agent_keeper/audit.py)
 [![Upstream PR](https://img.shields.io/badge/KeeperHub-PR%20%232547%20(Under%20Review)-orange)](https://github.com/KeeperHub/keeperhub/pull/2547)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-> **1-Second Instant Demo:** `make demo`
+> **Live Arc Mainnet Demo:** `python3 scripts/demo_arc_mainnet.py` | **Instant MCP Demo:** `make demo`
 
 ![AgentKeeper MCP Demo](assets/agent_keeper_demo.gif)
 
@@ -19,21 +23,21 @@
 
 ## The Problem: Why Agents Break Onchain
 
-If you give an autonomous agent (Claude, Gemini, Cursor) direct access to an RPC or raw private key, three critical failures happen:
+If you give an autonomous agent direct access to an RPC or raw private key, three critical failures happen:
 
 1. **Context Credential Leaks:** The moment an execution errors out, the model includes raw private keys or RPC URLs in its chat history or debug prompts.
 2. **Nonce Collisions & Gas Drain:** High-frequency agents retry transactions without tracking mempool states, burning capital on stuck nonces during fee spikes.
-3. **The Paywall Dead-End:** When an agent queries paid data services returning `HTTP 402 Payment Required`, it has no standardized way to sign a micro-payment and continue execution.
+3. **The Paywall Dead-End:** When an agent queries paid data services returning `HTTP 402 Payment Required`, it has no standardized way to sign a micro-payment and continue execution. On Arc Mainnet, where USDC is the native gas asset, agents need a native settlement mechanism that manages USDC spending ceilings deterministically.
 
 ---
 
 ## The Solution: Guarded Gateway Architecture
 
-AgentKeeper sits as a local middleware between the LLM runtime and blockchain networks. Private keys stay isolated in local memory, while the agent interacts solely through five bounded tools:
+AgentKeeper sits as a local middleware between the agent runtime and blockchain networks. Private keys stay isolated in local memory, while the agent interacts solely through typed, bounded tools:
 
 ```
 ┌────────────────────────────────────────────────────────┐
-│             AI Agent (Claude / Cursor / IDE)           │
+│      Autonomous Agent Client (Host / IDE / Daemon)     │
 └──────────────────────────┬─────────────────────────────┘
                            │ (stdio / FastMCP)
                            ▼
@@ -48,8 +52,8 @@ AgentKeeper sits as a local middleware between the LLM runtime and blockchain ne
 └──────────────┬───────────────────────────┬─────────────┘
                │                           │
                ▼                           ▼
-       EVM / L2 Networks           x402 Paywalled APIs
-    (Arc / Base / Arb / Mantle)    (Per-token Data Feeds)
+       Circle Arc Mainnet          x402 Paywalled APIs
+   (Chain ID 5042 / Native USDC)   (Per-token Data Feeds)
 ```
 
 ---
