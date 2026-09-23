@@ -16,13 +16,13 @@
 
 I am an independent systems software developer building deterministic infrastructure in Python, Rust, and C++ for autonomous onchain execution. I am submitting AgentKeeper-MCP to the Circle Arc Microgrants program to provide an open-source, non-custodial Model Context Protocol gateway specifically tailored for AI agents operating on Circle's newly launched Arc Mainnet.
 
-Autonomous large language model agents interacting with blockchains face significant security challenges when handling credentials, gas tokens, and HTTP 402 resource challenges. Injecting raw private keys or RPC endpoints directly into an LLM context risks prompt injection attacks, memory leakage into conversation logs, and non-deterministic transaction execution. On Arc Mainnet, where USDC functions as the native gas asset, agents require a specialized execution harness that safely handles native USDC balances, enforces strict spending ceilings, and signs cryptographic permits without human coordinator latency.
+Autonomous software agents interacting with blockchains face significant security challenges when handling credentials, gas tokens, and HTTP 402 resource challenges. Injecting raw private keys or RPC endpoints directly into an automated agent context risks prompt injection attacks, memory leakage into conversation logs, and non-deterministic transaction execution. On Arc Mainnet, where USDC functions as the native gas asset, agents require a specialized execution runtime that safely handles native USDC balances, enforces strict spending ceilings, and signs cryptographic permits without human coordinator latency.
 
 AgentKeeper-MCP resolves this by placing a hardened FastMCP middleware between autonomous AI agents and Arc Mainnet. The gateway encapsulates non-custodial key handling inside process memory and provides typed JSON-RPC tools for the Model Context Protocol. Through keeper_x402_settle, agents autonomously evaluate HTTP 402 Payment Required challenges and generate EIP-712 structured permits anchored to Chain ID 5042, allowing agents to pay for inference APIs, market data streams, or computational resources directly in USDC. Through keeper_agent_balance, agents inspect their real-time onchain USDC treasury on Arc Mainnet alongside Base, Arbitrum, and Ethereum.
 
-The entire codebase is engineered under Gerard Holzmann's Power of 10 Deterministic Safety Invariants. All execution routines avoid dynamic code evaluation, loops are strictly bounded to prevent denial of service vulnerabilities, functions remain under sixty lines of code, and assertion density exceeds two invariants per routine. An in-memory idempotency cache prevents duplicate transaction execution during network congestion or RPC latency, while a monotonic spending accumulator ensures cumulative micro-payments never exceed operator-configured risk limits.
+The entire codebase is engineered under strict Deterministic Safety Invariants. All execution routines avoid dynamic code evaluation, loops are strictly bounded to prevent denial of service vulnerabilities, functions remain under sixty lines of code, and assertion density exceeds two invariants per routine. An in-memory idempotency cache prevents duplicate transaction execution during network congestion or RPC latency, while a monotonic spending accumulator ensures cumulative micro-payments never exceed operator-configured risk limits.
 
-As a solo developer, I focus on shipping lean, audited, and immediately reproducible software without marketing bloat. The project includes a comprehensive 106-test verification suite covering unit, white-box, black-box, and property fuzz tests with one hundred percent green pass rates. Live RPC queries against https://rpc.mainnet.arc.io are tested and functional, and a zero-dependency CLI walkthrough is provided to allow judges to reproduce all gateway workflows in under thirty seconds.
+As a solo developer, I focus on shipping lean, audited, and immediately reproducible software without marketing bloat. The project includes a comprehensive 112-test verification suite covering unit, white-box, black-box, and property fuzz tests with one hundred percent green pass rates. Live RPC queries against https://rpc.mainnet.arc.io are tested and functional, and a zero-dependency CLI walkthrough is provided to allow judges to reproduce all gateway workflows in under thirty seconds.
 
 ---
 
@@ -30,7 +30,7 @@ As a solo developer, I focus on shipping lean, audited, and immediately reproduc
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────────────┐
-│                    LLM Agent Client (Claude / Cursor / Custom)                    │
+│                 Autonomous Agent Client (Host / IDE / Daemon)                     │
 └─────────────────────────────────────────┬─────────────────────────────────────────┘
                                           │ stdio / JSON-RPC 2.0 (FastMCP)
                                           ▼
@@ -58,7 +58,7 @@ As a solo developer, I focus on shipping lean, audited, and immediately reproduc
 
 ---
 
-## Power of 10 Safety Invariants Audit
+## Deterministic Safety Invariants Audit
 
 | Invariant | Standard Enforced | Implementation Evidence |
 | :--- | :--- | :--- |
@@ -71,7 +71,7 @@ As a solo developer, I focus on shipping lean, audited, and immediately reproduc
 | **Rule 7: Check Parameters** | Strict input validation | EIP-55 checksum, 128KB calldata limits, USDC spending ceiling. |
 | **Rule 8: Zero Metaprogramming** | Zero dynamic code evaluation | Strict Pydantic schemas; zero `eval()` or `exec()`. |
 | **Rule 9: Restrict Indirection** | Single-level reference traversal | Flat array indexing `((i-1) >> 1)` rather than deep pointer-node trees. |
-| **Rule 10: Static Analysis** | 100% test pass rate, 0 warnings | 106/106 tests passing & 0 ruff lint warnings. |
+| **Rule 10: Static Analysis** | 100% test pass rate, 0 warnings | 112/112 tests passing & 0 ruff lint warnings. |
 
 ---
 
@@ -82,11 +82,11 @@ As a solo developer, I focus on shipping lean, audited, and immediately reproduc
 git clone https://github.com/Ishant5436/agent-keeper-mcp.git
 cd agent-keeper-mcp
 
-# 2. Run automated test suite (106 tests passing)
+# 2. Run automated test suite (112 tests passing)
 make test
 
 # 3. Run live Arc Mainnet integration demo
-python3 demo.py
+python3 scripts/demo_arc_mainnet.py
 
 # 4. Verify static linting and type hygiene
 make lint
