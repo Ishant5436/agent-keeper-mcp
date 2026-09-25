@@ -130,7 +130,7 @@ Creditcoin 3.0 is a decentralized Layer 1 EVM consensus network designed for rea
 
 ## Institutional Quality Assurance & CertiK-Readiness
 
-AgentKeeper-MCP is engineered to institutional software quality management standards. To ensure full qualification for production mainnet deployment and the **BUIDL CTC CertiK Audit Award ($8,000 credit)**, the repository integrates an automated QMS auditor conforming to the upcoming **ISO/DIS 9001:2026** standard:
+AgentKeeper-MCP is engineered to institutional software quality management standards. To ensure full qualification for production mainnet deployment, the repository integrates an automated QMS auditor conforming to the upcoming **ISO/DIS 9001:2026** standard:
 
 | ISO/DIS 9001:2026 Clause | Metric & Standard Enforced | Verification Status |
 | :--- | :--- | :--- |
