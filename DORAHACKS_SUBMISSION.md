@@ -1,9 +1,10 @@
-# BUIDL CTC Fall 2026 Technical Submission Dossier
+# Circle Arc Microgrants Technical Submission Dossier
 
 **Project Name:** AgentKeeper-MCP  
 **BUIDL Profile:** [#48196](https://dorahacks.io/buidl/48196)  
-**Track:** Creditcoin 3.0 Cross-Chain Interoperability & Multi-Chain Autonomous Agent Infrastructure  
-**Prize Pool:** $15,000 USD  
+**Track:** Arc Mainnet Builders (500 USDC Microgrant Pool)  
+**Prize Pool:** 500 USDC Microgrant  
+**Target Network:** Arc Mainnet (Chain ID 5042)  
 **Author:** Ishant Panchal (`Ishant5436` / `ishant.p@somaiya.edu`)  
 **Repository:** [https://github.com/Ishant5436/agent-keeper-mcp](https://github.com/Ishant5436/agent-keeper-mcp)  
 **Upstream Integration:** [KeeperHub PR #2547](https://github.com/KeeperHub/keeperhub/pull/2547)  
@@ -82,7 +83,7 @@ The implementation enforces strict software constraints:
 
 ## 4. ISO/DIS 9001:2026 Quality Management System & CertiK-Readiness
 
-AgentKeeper-MCP is engineered to institutional software quality management standards. To ensure qualification for production mainnet deployment and the **BUIDL CTC CertiK Audit Award ($8,000 credit)**, the repository integrates an automated QMS compliance auditor:
+AgentKeeper-MCP is engineered to institutional software quality management standards. To ensure qualification for production mainnet deployment, the repository integrates an automated QMS compliance auditor:
 
 | ISO/DIS 9001:2026 Clause | Metric & Standard Enforced | Status |
 | :--- | :--- | :--- |
