@@ -30,9 +30,9 @@ def test_blackbox_execute_tx_success_contract():
     assert res["success"] is True
     assert "tx_hash" in res and res["tx_hash"].startswith("0x")
     assert res["chain_id"] == 1
-    assert res["status"] == "CONFIRMED"
+    assert res["status"] == "SIMULATED_LOCAL"
     assert "audit_receipt" in res
-    assert res["audit_receipt"]["relay_status"] == "RELAYED_VIA_KEEPERHUB"
+    assert res["audit_receipt"]["relay_status"] == "SIMULATED_NO_RELAY_CONFIGURED"
 
 
 def test_blackbox_execute_tx_adversarial_rejected():

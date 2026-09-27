@@ -11,6 +11,15 @@
 
 ---
 
+**Live deployment status:** `keeper_agent_balance` performs real, read-only
+JSON-RPC balance queries against Arc Mainnet today. `keeper_execute_tx`
+without a configured relay reports `status: SIMULATED_LOCAL`, not a broadcast
+confirmation. `scripts/broadcast_live_arc_tx.py` submits one real, minimal
+transaction once a wallet is funded; see the repository README for the
+resulting transaction hash and explorer link.
+
+---
+
 ## 1. Abstract & System Architecture
 
 Autonomous onchain execution agents face a fundamental trilemma: **context credential exposure**, **state desynchronization (nonce collisions)**, and **unhandled HTTP 402 resource gating**. When private keys or RPC URLs are injected into an agent's conversational context, any unhandled revert or stack trace risks leaking keys into chat logs, prompt caches, or model fine-tuning sets.
@@ -113,7 +122,7 @@ AgentKeeper-MCP is engineered to institutional software quality management stand
 git clone https://github.com/Ishant5436/agent-keeper-mcp.git
 cd agent-keeper-mcp
 
-# 2. Execute Automated Test Suite (106 Tests Passing)
+# 2. Execute Automated Test Suite (112 Tests Passing)
 make test
 
 # 3. Verify ISO/DIS 9001:2026 Compliance (7/7 Clauses)
@@ -125,7 +134,7 @@ make demo
 
 ### Verification Telemetry Output:
 ```
-============================= 106 passed in 11.71s =============================
+============================= 112 passed in 13.72s =============================
 [PASS] Clause 4: Context & Digital Infrastructure (4/4 requirements)
 [PASS] Clause 5: Leadership & Quality Culture (3/3 requirements)
 [PASS] Clause 6: Planning & Risk-Based Thinking (4/4 requirements)
