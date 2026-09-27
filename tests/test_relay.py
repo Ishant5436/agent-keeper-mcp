@@ -23,7 +23,7 @@ def test_successful_relay_execution():
     res = client.execute_transaction(req)
     assert res.success is True
     assert res.tx_hash.startswith("0x")
-    assert res.status == "CONFIRMED"
+    assert res.status == "SIMULATED_LOCAL"
     assert res.audit_receipt is not None
 
 

@@ -117,7 +117,7 @@ class KeeperRelayClient:
         eff_gas_price = 1.5 if req.chain_id == 8453 else 25.0
 
         audit_receipt: dict[str, Any] = {
-            "relay_status": "RELAYED_VIA_KEEPERHUB",
+            "relay_status": "SIMULATED_NO_RELAY_CONFIGURED",
             "mev_shield_active": bool(self.api_key),
             "attempt_number": attempt,
             "idempotency_key": req.idempotency_key,
@@ -128,6 +128,9 @@ class KeeperRelayClient:
         if self.audit_verifier:
             self.audit_verifier.register_transaction(tx_hash)
 
+        # No KEEPERHUB_API_KEY configured, so nothing was broadcast to any
+        # chain. Status must say SIMULATED, never CONFIRMED, so callers
+        # (human or agent) cannot mistake this tx_hash for an onchain one.
         return TxExecutionResponse(
             success=True,
             tx_hash=tx_hash,
@@ -135,7 +138,7 @@ class KeeperRelayClient:
             nonce=current_nonce,
             gas_used=gas_used,
             effective_gas_price_gwei=eff_gas_price,
-            status="CONFIRMED",
+            status="SIMULATED_LOCAL",
             audit_receipt=audit_receipt,
         )
 

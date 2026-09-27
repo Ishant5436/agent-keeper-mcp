@@ -12,6 +12,28 @@
 
 ---
 
+## Live Deployment Status (Arc Mainnet)
+
+What is genuinely live on Arc Mainnet today: `keeper_agent_balance` performs
+real, read-only JSON-RPC balance queries against `https://rpc.mainnet.arc.io`.
+`keeper_x402_settle` produces real EIP-712 signatures, but signing alone does
+not touch the chain. When no `KEEPERHUB_API_KEY` relay is configured,
+`keeper_execute_tx` runs a local deterministic simulation and reports
+`status: SIMULATED_LOCAL`, not a broadcast confirmation, so it cannot be
+mistaken for an onchain result.
+
+`scripts/broadcast_live_arc_tx.py` signs and submits one real, minimal
+transaction (a zero-value self-transfer, costing only the gas fee) using a
+wallet and private key you supply yourself in your own shell. Run it once a
+wallet is funded with a small amount of USDC on Arc Mainnet, then record the
+resulting transaction hash and explorer link below as the deployment
+evidence this program requires:
+
+- **Live Transaction Hash:** _pending, run `scripts/broadcast_live_arc_tx.py`_
+- **Explorer Link:** _pending_
+
+---
+
 ## Form Submission Narrative (Raw Conversational Paragraphs for Anti-AI Filters)
 
 I am an independent systems software developer building deterministic infrastructure in Python, Rust, and C++ for autonomous onchain execution. I am submitting AgentKeeper-MCP to the Circle Arc Microgrants program to provide an open-source, non-custodial Model Context Protocol gateway specifically tailored for AI agents operating on Circle's newly launched Arc Mainnet.
@@ -85,9 +107,15 @@ cd agent-keeper-mcp
 # 2. Run automated test suite (112 tests passing)
 make test
 
-# 3. Run live Arc Mainnet integration demo
+# 3. Run the local Arc Mainnet workflow walkthrough (reads live balances,
+#    signs a payment permit locally; does not broadcast)
 python3 scripts/demo_arc_mainnet.py
 
 # 4. Verify static linting and type hygiene
 make lint
+
+# 5. Broadcast one real transaction on Arc Mainnet as deployment evidence
+#    (requires your own funded wallet; see "Live Deployment Status" above)
+export AGENT_PRIVATE_KEY=0x...
+python3 scripts/broadcast_live_arc_tx.py
 ```

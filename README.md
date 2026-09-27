@@ -15,7 +15,7 @@
 [![Upstream PR](https://img.shields.io/badge/KeeperHub-PR%20%232547%20(Under%20Review)-orange)](https://github.com/KeeperHub/keeperhub/pull/2547)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-> **Live Arc Mainnet Demo:** `python3 scripts/demo_arc_mainnet.py` | **Instant MCP Demo:** `make demo`
+> **Arc Mainnet Workflow Walkthrough (local, no broadcast):** `python3 scripts/demo_arc_mainnet.py` | **Instant MCP Demo:** `make demo` | **Live Onchain Broadcast Evidence:** `python3 scripts/broadcast_live_arc_tx.py` (requires your own funded wallet)
 
 ![AgentKeeper MCP Demo](assets/agent_keeper_demo.gif)
 
