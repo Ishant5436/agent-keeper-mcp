@@ -74,6 +74,7 @@ AgentKeeper sits as a local middleware between the agent runtime and blockchain 
 ### 3. Autonomous HTTP 402 Micropayments (`keeper_x402_settle`)
 * Signs an EIP-712 `Permit(payer, payee, amount, nonce, deadline)` under a per-permit random 256-bit nonce, capped by a cumulative spend limit (`MAX_AUTONOMOUS_PAYMENT_USDC`).
 * The permit is bound to a verifying contract you deploy: [`contracts/X402Receipt.sol`](contracts/X402Receipt.sol). The address comes from `ARC_X402_VERIFIER` (EIP-55 checksum). **If it is unset or invalid the tool fails closed** and returns an error; there is no default address.
+* The response includes a `permit` object (payer, payee, amount, nonce as a decimal string, deadline, chainId, verifyingContract). Together with `signature` it is exactly what `X402Receipt.settle(...)` needs, so the output is redeemable on-chain by anyone (a test does this end to end on an in-memory EVM). Both demos (`make demo`, `scripts/demo_arc_mainnet.py`) need `ARC_X402_VERIFIER` set for their x402 step; without it they print the fail-closed error.
 * Defaults to Arc Mainnet (chain 5042). Other tools' chain defaults are unchanged; `keeper_x402_settle` requests for any other chain currently fail closed because no verifier is configured for them.
 
 #### Arc x402 Receipt Verifier

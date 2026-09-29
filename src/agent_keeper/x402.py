@@ -116,8 +116,12 @@ class X402PaymentManager:
         """Return the EIP-55 checksum address of the agent signer."""
         return self._account.address
 
-    def _create_eip712_signature(self, req: X402PaymentRequest, timestamp: int) -> str:
-        """Sign an EIP-712 permit redeemable via X402Receipt.settle()."""
+    def _sign_permit(self, req: X402PaymentRequest, timestamp: int) -> tuple[str, dict]:
+        """Sign an EIP-712 permit; return (signature, redeemable permit fields).
+
+        The returned dict carries everything needed to call
+        X402Receipt.settle(payer, payee, amount, nonce, deadline, signature).
+        """
         chain_id = getattr(req, "chain_id", ARC_CHAIN_ID)
         typed_data = build_permit_typed_data(
             chain_id=chain_id,
@@ -130,7 +134,11 @@ class X402PaymentManager:
         )
         signable = encode_typed_data(full_message=typed_data)
         signed = Account.sign_message(signable, private_key=self._private_key)
-        return "0x" + signed.signature.hex()
+        permit = dict(typed_data["message"])
+        permit["nonce"] = str(permit["nonce"])  # decimal string: uint256 exceeds JSON number range
+        permit["chainId"] = chain_id
+        permit["verifyingContract"] = typed_data["domain"]["verifyingContract"]
+        return "0x" + signed.signature.hex(), permit
 
     def settle_payment(self, req: X402PaymentRequest) -> X402PaymentResponse:
         """Autonomously evaluate and settle HTTP 402 challenge within safety limits."""
@@ -158,7 +166,7 @@ class X402PaymentManager:
             )
 
         now = int(time.time())
-        signature = self._create_eip712_signature(req, now)
+        signature, permit = self._sign_permit(req, now)
         payment_hash = "0x" + keccak(text=f"{signature}:{now}").hex()
 
         self.total_spent = round(self.total_spent + req.amount_usdc, 6)
@@ -169,6 +177,7 @@ class X402PaymentManager:
             recipient=req.recipient_address,
             auth_token=f"Bearer x402_{payment_hash[:16]}",
             signature=signature,
+            permit=permit,
             unblocked_data={
                 "status": "resource_unlocked",
                 "resource": req.resource_url,

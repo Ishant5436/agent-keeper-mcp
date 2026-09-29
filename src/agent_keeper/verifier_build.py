@@ -26,6 +26,12 @@ def find_solc() -> str:
     return str(solcx.get_executable(SOLC_VERSION))
 
 
+def solc_version() -> str:
+    """Actual version string of the solc binary that will compile the contract."""
+    out = subprocess.run([find_solc(), "--version"], check=True, capture_output=True, text=True, timeout=30)
+    return out.stdout.strip().splitlines()[-1]
+
+
 def compile_contract() -> tuple[list, str]:
     """Return (abi, creation bytecode as 0x-hex) for X402Receipt."""
     out = subprocess.run(

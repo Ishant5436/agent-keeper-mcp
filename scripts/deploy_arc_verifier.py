@@ -28,7 +28,7 @@ import rlp
 from eth_utils import keccak, to_checksum_address
 
 from agent_keeper.arc_chain import ARC_CHAIN_ID, explorer_url, rpc_call, rpc_url, wait_for_receipt
-from agent_keeper.verifier_build import EVM_VERSION, SOLC_VERSION, compile_contract
+from agent_keeper.verifier_build import EVM_VERSION, SOLC_VERSION, compile_contract, solc_version
 
 ZERO_ADDRESS = "0x" + "00" * 20
 # ASSUMPTION (UNVERIFIED): the native gas unit has 18 decimals and 1 native unit = 1 USDC.
@@ -80,7 +80,7 @@ def dry_run(args) -> int:
     _abi, initcode = compile_contract()
     data_bytes = bytes.fromhex(initcode[2:])
     print(f"== DRY RUN (no key read, nothing sent) ==\nRPC: {rpc_url()} (default UNVERIFIED)")
-    print(f"solc target: {SOLC_VERSION} / evm {EVM_VERSION}; initcode {len(data_bytes)} bytes, "
+    print(f"{solc_version()} (pragma ^0.8.20, wanted {SOLC_VERSION}) / evm {EVM_VERSION}; initcode {len(data_bytes)} bytes, "
           f"keccak {'0x' + keccak(data_bytes).hex()}")
     gas, price, nonce, source = gather_chain_info(args.sender, initcode, args.gas_price_gwei)
     data_shown = initcode if args.print_data else f"{initcode[:18]}...({len(data_bytes)} bytes; use --print-data)"
