@@ -86,23 +86,23 @@ The implementation enforces strict software constraints:
 | **Rule 7: Check Returns & Parameters** | Strict input validation | EIP-55 checksum, calldata byte limits (128KB), wei spending caps. |
 | **Rule 8: Minimal Metaprogramming** | Zero dynamic code evaluation | Strict Pydantic schemas; zero `eval()`, `exec()`, or dynamic monkey-patching. |
 | **Rule 9: Restrict Pointer Indirection** | Single-level reference traversal | Flat contiguous array indexing `((i-1) >> 1)` rather than deep pointer-node trees. |
-| **Rule 10: Static Analysis & Tests** | 100% test pass rate, 0 warnings | 106/106 passing test suite (including 5,000-case Hypothesis property fuzz tests) & 0 ruff warnings. |
+| **Rule 10: Static Analysis & Tests** | 100% test pass rate, 0 warnings | 112/112 passing test suite (including 5,000-case Hypothesis property fuzz tests) & 0 ruff warnings. |
 
 ---
 
-## 4. ISO/DIS 9001:2026 Quality Management System & CertiK-Readiness
+## 4. Internal Safety & Static-Analysis Checklist
 
-AgentKeeper-MCP is engineered to institutional software quality management standards. To ensure qualification for production mainnet deployment, the repository integrates an automated QMS compliance auditor:
+AgentKeeper-MCP maintains an internal engineering checklist, organized loosely along the section structure of the ISO 9001 quality-management standard for convenience. This is a self-administered script, not a third-party or accredited certification:
 
-| ISO/DIS 9001:2026 Clause | Metric & Standard Enforced | Status |
+| Checklist Area (internal script label) | Metric & Standard Enforced | Status |
 | :--- | :--- | :--- |
-| **Clause 4: Context & Infrastructure** | Multi-chain config (Arc, Base, Arb, Mantle, CTC), FastMCP stdio server | `[PASS] 100%` |
-| **Clause 5: Leadership & Quality** | Formal Quality Manual (`QUALITY_MANUAL.md`), Zero-Defect Policy | `[PASS] 100%` |
-| **Clause 6: Planning & Risk** | Formal Risk Register (`RISK_REGISTER.md`), Merkle depth bounds ($\le 64$), EIP-55 checksum | `[PASS] 100%` |
-| **Clause 7: Support & Qualification** | Typed Pydantic schemas, Ruff static analysis, Python 3.12 pinned runtime | `[PASS] 100%` |
-| **Clause 8: Operation & V&V** | Traceability Matrix (`TRACEABILITY_MATRIX.md`), 106 automated tests, FastMCP integration | `[PASS] 100%` |
-| **Clause 9: Performance Evaluation** | Dynamic Oracle Anchoring verification, Arc Mainnet live query, GitHub Actions CI | `[PASS] 100%` |
-| **Clause 10: Continual Improvement** | Hypothesis property fuzz engine (5,000 iterations), automated QMS script audit | `[PASS] 100%` |
+| **Area 4: Context & Infrastructure** | Multi-chain config (Arc, Base, Arb, Mantle, CTC), FastMCP stdio server | `[PASS] 100%` |
+| **Area 5: Leadership & Quality** | Internal quality notes (`QUALITY_MANUAL.md`), zero-defect policy | `[PASS] 100%` |
+| **Area 6: Planning & Risk** | Internal risk register (`RISK_REGISTER.md`), Merkle depth bounds ($\le 64$), EIP-55 checksum | `[PASS] 100%` |
+| **Area 7: Support & Qualification** | Typed Pydantic schemas, Ruff static analysis, Python 3.12 pinned runtime | `[PASS] 100%` |
+| **Area 8: Operation & V&V** | Traceability notes (`TRACEABILITY_MATRIX.md`), 112 automated tests, FastMCP integration | `[PASS] 100%` |
+| **Area 9: Performance Evaluation** | Dynamic oracle anchoring verification, Arc Mainnet live query, GitHub Actions CI | `[PASS] 100%` |
+| **Area 10: Continual Improvement** | Hypothesis property fuzz engine (5,000 iterations), automated checklist script | `[PASS] 100%` |
 
 ---
 
@@ -125,7 +125,8 @@ cd agent-keeper-mcp
 # 2. Execute Automated Test Suite (112 Tests Passing)
 make test
 
-# 3. Verify ISO/DIS 9001:2026 Compliance (7/7 Clauses)
+# 3. Run internal safety/static-analysis checklist (7/7 areas; script output
+#    still prints legacy "ISO/DIS 9001:2026" / "Clause" labels internally)
 make audit-iso9001
 
 # 4. Run Interactive Demonstrator (All 5 Onchain Workflows)

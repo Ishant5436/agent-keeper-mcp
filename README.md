@@ -10,7 +10,7 @@
 [![CI](https://github.com/Ishant5436/agent-keeper-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Ishant5436/agent-keeper-mcp/actions)
 [![Arc Mainnet](https://img.shields.io/badge/Arc%20Mainnet-Native%20USDC%20(5042)-teal)](https://explorer.arc.io)
 [![Creditcoin](https://img.shields.io/badge/Creditcoin%203.0-Attestcoin%20Settlement-blue)](src/agent_keeper/creditcoin.py)
-[![ISO 9001:2026](https://img.shields.io/badge/ISO%2FDIS%209001%3A2026-Certified%20QMS-success)](iso9001_compliance/QUALITY_MANUAL.md)
+[![Safety Checklist](https://img.shields.io/badge/Internal%20Safety%20Checklist-7%2F7%20areas-success)](iso9001_compliance/QUALITY_MANUAL.md)
 [![Safety Standard](https://img.shields.io/badge/Safety%20Standard-Deterministic%20Invariants-purple)](src/agent_keeper/audit.py)
 [![Upstream PR](https://img.shields.io/badge/KeeperHub-PR%20%232547%20(Under%20Review)-orange)](https://github.com/KeeperHub/keeperhub/pull/2547)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
@@ -128,21 +128,21 @@ Creditcoin 3.0 is a decentralized Layer 1 EVM consensus network designed for rea
 
 ---
 
-## Institutional Quality Assurance & CertiK-Readiness
+## Internal Safety & Static-Analysis Checklist
 
-AgentKeeper-MCP is engineered to institutional software quality management standards. To ensure full qualification for production mainnet deployment, the repository integrates an automated QMS auditor conforming to the upcoming **ISO/DIS 9001:2026** standard:
+AgentKeeper-MCP maintains an internal engineering checklist, organized loosely along the section structure of the ISO 9001 quality-management standard for convenience, but this is a self-administered script, not a third-party or accredited certification. The checklist covers:
 
-| ISO/DIS 9001:2026 Clause | Metric & Standard Enforced | Verification Status |
+| Checklist Area (internal script label) | Metric & Standard Enforced | Verification Status |
 | :--- | :--- | :--- |
-| **Clause 4: Context & Infrastructure** | Multi-chain config (Arc, Base, Arb, Mantle, CTC), FastMCP stdio server | `[✓ PASS] 100%` |
-| **Clause 5: Leadership & Quality** | Formal Quality Manual ([`QUALITY_MANUAL.md`](iso9001_compliance/QUALITY_MANUAL.md)), Zero-Defect Policy | `[✓ PASS] 100%` |
-| **Clause 6: Planning & Risk** | Formal Risk Register ([`RISK_REGISTER.md`](iso9001_compliance/RISK_REGISTER.md)), Merkle depth bounds ($\le 64$), EIP-55 checksum | `[✓ PASS] 100%` |
-| **Clause 7: Support & Qualification** | Typed Pydantic schemas, Ruff static analysis, Python 3.12 pinned runtime | `[✓ PASS] 100%` |
-| **Clause 8: Operation & V&V** | Traceability Matrix ([`TRACEABILITY_MATRIX.md`](iso9001_compliance/TRACEABILITY_MATRIX.md)), 106 automated tests, FastMCP integration | `[✓ PASS] 100%` |
-| **Clause 9: Performance Evaluation** | Dynamic Oracle Anchoring verification, Arc Mainnet live query, GitHub Actions CI | `[✓ PASS] 100%` |
-| **Clause 10: Continual Improvement** | Hypothesis property fuzz engine (5,000 iterations), automated QMS script audit | `[✓ PASS] 100%` |
+| **Area 4: Context & Infrastructure** | Multi-chain config (Arc, Base, Arb, Mantle, CTC), FastMCP stdio server | `[PASS] 100%` |
+| **Area 5: Leadership & Quality** | Internal quality notes ([`QUALITY_MANUAL.md`](iso9001_compliance/QUALITY_MANUAL.md)), zero-defect policy | `[PASS] 100%` |
+| **Area 6: Planning & Risk** | Internal risk register ([`RISK_REGISTER.md`](iso9001_compliance/RISK_REGISTER.md)), Merkle depth bounds ($\le 64$), EIP-55 checksum | `[PASS] 100%` |
+| **Area 7: Support & Qualification** | Typed Pydantic schemas, Ruff static analysis, Python 3.12 pinned runtime | `[PASS] 100%` |
+| **Area 8: Operation & V&V** | Traceability notes ([`TRACEABILITY_MATRIX.md`](iso9001_compliance/TRACEABILITY_MATRIX.md)), 112 automated tests, FastMCP integration | `[PASS] 100%` |
+| **Area 9: Performance Evaluation** | Dynamic oracle anchoring verification, Arc Mainnet live query, GitHub Actions CI | `[PASS] 100%` |
+| **Area 10: Continual Improvement** | Hypothesis property fuzz engine (5,000 iterations), automated checklist script | `[PASS] 100%` |
 
-Run the automated ISO 9001 compliance auditor locally:
+Run the internal checklist script locally (its own console output still prints "ISO/DIS 9001:2026" and "Clause" labels internally; that is the script's own legacy naming, not a claim of certification):
 ```bash
 make audit-iso9001
 ```
@@ -187,21 +187,22 @@ pytest
 ```
 ============================== test session starts ==============================
 platform darwin -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0
-collected 106 items
+collected 112 items
 
-tests/test_audit.py ....                                                 [  3%]
-tests/test_blackbox.py .................                                 [ 19%]
-tests/test_creditcoin.py .....................................           [ 54%]
-tests/test_fuzz_merkle.py ....                                           [ 58%]
-tests/test_merkle_tree.py ..                                             [ 60%]
-tests/test_relay.py ....                                                 [ 64%]
-tests/test_schemas.py ..........                                         [ 73%]
-tests/test_server.py .......                                             [ 80%]
-tests/test_whitebox.py ...........                                       [ 90%]
+tests/test_arc_mainnet.py ......                                         [  5%]
+tests/test_audit.py ....                                                 [  8%]
+tests/test_blackbox.py .................                                 [ 24%]
+tests/test_creditcoin.py .....................................           [ 57%]
+tests/test_fuzz_merkle.py ....                                           [ 60%]
+tests/test_merkle_tree.py ..                                             [ 62%]
+tests/test_relay.py ....                                                 [ 66%]
+tests/test_schemas.py ..........                                         [ 75%]
+tests/test_server.py .......                                             [ 81%]
+tests/test_whitebox.py ...........                                       [ 91%]
 tests/test_workflow.py ......                                            [ 96%]
 tests/test_x402.py ....                                                  [100%]
 
-============================= 106 passed in 13.38s =============================
+============================= 112 passed in 14.40s =============================
 ```
 
 * **Deterministic Invariants:** Bounded retry loops, minimum 2 runtime assertions per function, zero dynamic heap allocations on execution path.
@@ -215,8 +216,9 @@ AgentKeeper-MCP is designed as the canonical agent execution layer for **KeeperH
 
 * **KeeperHub PR #2547:** [`feat(plugins): #2310 add Agent Gateway plugin`](https://github.com/KeeperHub/keeperhub/pull/2547)
   * Implements `AgentGatewayPlugin` (`src/plugins/agent-gateway.ts`) providing native KeeperHub action nodes for EVM transaction execution, HTTP 402 micro-payment settlement, and Creditcoin Attestcoin solver claims.
-  * Formally validated by KeeperHub core maintainer (`suisuss`):
+  * KeeperHub core maintainer (`suisuss`) confirmed the issue reference and PR linkage are correct, and that an unrelated CI check failure on their side is not attributable to this contribution:
     > *"check-issue-link is red on our side. #2310 is filed correctly and your reference is right... not a defect in your work, and there is nothing to refile or chase. I will come back here once the issue has a verdict."*
+    This is a maintainer acknowledgment that the submission is filed correctly and awaiting a merge verdict, not a statement that the plugin itself has been reviewed or approved.
   * Byte-identical plugin discovery (`pnpm discover-plugins`) and clean TypeScript compilation (`tsc --noEmit`).
 * **DoraHacks BUIDL Profile #48196:** [https://dorahacks.io/buidl/48196](https://dorahacks.io/buidl/48196)
 

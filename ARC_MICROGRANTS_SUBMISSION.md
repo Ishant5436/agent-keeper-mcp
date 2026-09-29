@@ -34,7 +34,7 @@ evidence this program requires:
 
 ---
 
-## Form Submission Narrative (Raw Conversational Paragraphs for Anti-AI Filters)
+## Form Submission Narrative
 
 I am an independent systems software developer building deterministic infrastructure in Python, Rust, and C++ for autonomous onchain execution. I am submitting AgentKeeper-MCP to the Circle Arc Microgrants program to provide an open-source, non-custodial Model Context Protocol gateway specifically tailored for AI agents operating on Circle's newly launched Arc Mainnet.
 
