@@ -3,7 +3,7 @@
 all: test
 
 test:
-	uv run --with pytest --with hypothesis python -m pytest -v
+	uv run --with pytest --with hypothesis --with 'web3[tester]' --with py-solc-x python -m pytest -v
 
 audit-iso9001:
 	@echo "=== Verifying Agent Keeper MCP Against ISO/DIS 9001:2026 Standards ==="
