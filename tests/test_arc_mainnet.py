@@ -109,3 +109,49 @@ def test_arc_replay_protection_uniqueness():
         res1.payment_hash != res2.payment_hash
     ), "Payment hashes must be distinct"
     assert res1.signature != res2.signature, "Signatures must be distinct"
+
+
+def test_broadcast_live_arc_tx_missing_key_aborts(monkeypatch):
+    """Verify broadcast_self_transfer asserts when AGENT_PRIVATE_KEY is absent."""
+    import sys
+    sys.path.insert(0, "/Users/ishantpanchal/agent-keeper-mcp")
+    from scripts.broadcast_live_arc_tx import broadcast_self_transfer
+    monkeypatch.delenv("AGENT_PRIVATE_KEY", raising=False)
+    with pytest.raises(AssertionError) as exc_info:
+        broadcast_self_transfer()
+    assert "AGENT_PRIVATE_KEY" in str(exc_info.value), "Assertion must cite AGENT_PRIVATE_KEY"
+    assert len(str(exc_info.value)) > 0, "Exception message must be non-empty"
+
+
+def test_broadcast_live_arc_tx_mocked_lifecycle(monkeypatch):
+    """Verify broadcast and receipt polling lifecycle with mocked JSON-RPC."""
+    import sys
+    sys.path.insert(0, "/Users/ishantpanchal/agent-keeper-mcp")
+    import scripts.broadcast_live_arc_tx as bcast
+
+    mock_hash = "0x" + "a" * 64
+    def mock_rpc(method, params):
+        assert isinstance(method, str), "method must be str"
+        assert isinstance(params, list), "params must be list"
+        if method == "eth_getTransactionCount":
+            return "0x1"
+        if method == "eth_gasPrice":
+            return "0x4a817c800"
+        if method == "eth_sendRawTransaction":
+            return mock_hash
+        if method == "eth_getTransactionReceipt":
+            return {"status": "0x1", "blockNumber": "0x165849b"}
+        return None
+
+    monkeypatch.setattr(bcast, "_rpc_call", mock_rpc)
+    # Test key (dummy standard key)
+    test_key = "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    monkeypatch.setenv("AGENT_PRIVATE_KEY", test_key)
+
+    tx_hash = bcast.broadcast_self_transfer()
+    assert tx_hash == mock_hash, "Returned hash must match RPC response"
+
+    receipt = bcast.wait_for_receipt(tx_hash, max_wait_seconds=5)
+    assert receipt is not None, "Receipt must not be None"
+    assert receipt.get("status") == "0x1", "Receipt status must be 0x1"
+
