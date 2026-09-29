@@ -11,7 +11,7 @@ import pytest
 from agent_keeper.arc_chain import encode_settle_calldata
 
 ROOT = Path(__file__).resolve().parents[1]
-CANARY = "0x" + "c4" * 32  # fake key: must never appear in any output
+CANARY = "CANARY-NOT-A-KEY-7f3e91"  # sentinel string, not a key: must never appear in any output
 VERIFIER = "0xABaBaBaBABabABabAbAbABAbABabababaBaBABaB"
 
 
@@ -29,7 +29,7 @@ def test_deploy_dry_run_is_default_and_ignores_key():
     r = _run("deploy_arc_verifier.py", "--gas-price-gwei", "1", env_extra={"AGENT_PRIVATE_KEY": CANARY})
     assert r.returncode == 0, r.stderr
     assert "DRY RUN" in r.stdout and "Unsigned deployment tx" in r.stdout and "USDC" in r.stdout
-    assert CANARY not in r.stdout + r.stderr and CANARY[2:] not in r.stdout + r.stderr
+    assert CANARY not in r.stdout + r.stderr
 
 
 def test_deploy_broadcast_requires_key_in_env():
@@ -46,7 +46,7 @@ def test_settle_script_dry_run_ignores_key_and_broadcast_needs_it():
     env = {"ARC_X402_VERIFIER": VERIFIER, "AGENT_PRIVATE_KEY": CANARY}
     r = _run("broadcast_live_arc_tx.py", env_extra=env)
     assert r.returncode == 0 and "DRY RUN" in r.stdout
-    assert CANARY not in r.stdout + r.stderr and CANARY[2:] not in r.stdout + r.stderr
+    assert CANARY not in r.stdout + r.stderr
     r = _run("broadcast_live_arc_tx.py", "--broadcast", env_extra={"ARC_X402_VERIFIER": VERIFIER},
              drop=("AGENT_PRIVATE_KEY",))
     assert r.returncode == 1 and "AGENT_PRIVATE_KEY" in r.stdout

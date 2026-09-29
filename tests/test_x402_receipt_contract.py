@@ -158,3 +158,32 @@ def test_contract_is_non_custodial_no_payable_or_admin_surface(env):
 def test_deployed_bytecode_holds_no_funds_by_default(env):
     w3, c, _ = env
     assert w3.eth.get_balance(c.address) == 0
+
+
+def test_end_to_end_manager_output_is_redeemable_on_chain(env, monkeypatch):
+    """keeper_x402_settle's own response (signature + permit) settles on the deployed contract."""
+    from agent_keeper import x402
+    from agent_keeper.arc_chain import encode_settle_calldata
+    from agent_keeper.schemas import X402PaymentRequest
+
+    w3, c, sender = env
+    # eth-tester's chain id is not 5042: point the manager's Arc id at it for this test only.
+    monkeypatch.setattr(x402, "ARC_CHAIN_ID", w3.eth.chain_id)
+    monkeypatch.setenv("ARC_X402_VERIFIER", c.address)
+    req = X402PaymentRequest.model_construct(
+        resource_url="https://api.arc.quant/v1/feed", amount_usdc=0.25, recipient_address=PAYEE,
+        token_address=None, chain_id=w3.eth.chain_id,
+    )
+    mgr = x402.X402PaymentManager(private_key=Account.create().key.hex())
+    res = mgr.settle_payment(req)
+    assert res.success is True and res.permit is not None
+    p = res.permit
+    assert p["verifyingContract"] == c.address and p["payer"] == mgr.signer_address
+    data = encode_settle_calldata(
+        p["payer"], p["payee"], p["amount"], int(p["nonce"]), p["deadline"], bytes.fromhex(res.signature[2:])
+    )
+    receipt = w3.eth.wait_for_transaction_receipt(
+        w3.eth.send_transaction({"from": sender, "to": c.address, "data": data})
+    )
+    assert receipt["status"] == 1
+    assert c.functions.used(p["payer"], int(p["nonce"])).call() is True
