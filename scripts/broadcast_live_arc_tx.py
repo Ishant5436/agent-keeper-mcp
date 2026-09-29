@@ -86,6 +86,9 @@ def broadcast_self_transfer() -> str:
 def wait_for_receipt(tx_hash: str, max_wait_seconds: int = 60) -> dict | None:
     """Poll for the transaction receipt, bounded by max_wait_seconds."""
     assert max_wait_seconds > 0, "max_wait_seconds must be positive"
+    assert (
+        isinstance(tx_hash, str) and tx_hash.startswith("0x") and len(tx_hash) == 66
+    ), "tx_hash must be valid 32-byte hex string"
     deadline = time.time() + max_wait_seconds
     while time.time() < deadline:
         receipt = _rpc_call("eth_getTransactionReceipt", [tx_hash])
