@@ -98,7 +98,10 @@ def main() -> int:
 
     print_step_banner(2, "Resolve HTTP 402 API Challenge via Arc Mainnet EIP-712 Permit")
     settlement = run_arc_x402_settlement(amount_usdc=0.25)
-    assert settlement.get("success") is True, "settlement must succeed"
+    if settlement.get("success") is not True:
+        print("\n[DEMO STOPPED] x402 signing failed closed (expected until a verifier is deployed):")
+        print(f"  {settlement.get('error')}")
+        return 1
 
     print_step_banner(3, "Verify Monotonic Budget Safeguards on Arc Mainnet")
     updated_treasury = run_arc_treasury_inspection()

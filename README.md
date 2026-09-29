@@ -6,7 +6,7 @@
 
 > A deterministic, non-custodial Model Context Protocol (MCP) execution gateway for autonomous AI agents on Arc Mainnet with native USDC gas settlement and HTTP 402 micro-payments.
 
-[![Tests](https://img.shields.io/badge/tests-112%2F112%20passing-brightgreen)](https://github.com/Ishant5436/agent-keeper-mcp)
+[![Tests](https://img.shields.io/badge/tests-137%2F137%20passing-brightgreen)](https://github.com/Ishant5436/agent-keeper-mcp)
 [![CI](https://github.com/Ishant5436/agent-keeper-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Ishant5436/agent-keeper-mcp/actions)
 [![Arc Mainnet](https://img.shields.io/badge/Arc%20Mainnet-Native%20USDC%20(5042)-teal)](https://explorer.arc.io)
 [![Creditcoin](https://img.shields.io/badge/Creditcoin%203.0-Attestcoin%20Settlement-blue)](src/agent_keeper/creditcoin.py)
@@ -15,7 +15,7 @@
 [![Upstream PR](https://img.shields.io/badge/KeeperHub-PR%20%232547%20(Under%20Review)-orange)](https://github.com/KeeperHub/keeperhub/pull/2547)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-> **Arc Mainnet Workflow Walkthrough (local, no broadcast):** `python3 scripts/demo_arc_mainnet.py` | **Instant MCP Demo:** `make demo` | **Live Onchain Broadcast Evidence:** `python3 scripts/broadcast_live_arc_tx.py` (requires your own funded wallet)
+> **Arc Mainnet Workflow Walkthrough (local, no broadcast):** `python3 scripts/demo_arc_mainnet.py` | **Instant MCP Demo:** `make demo` | **Arc verifier:** [`contracts/X402Receipt.sol`](contracts/X402Receipt.sol) (see "Arc x402 Receipt Verifier" below; not yet deployed)
 
 ![AgentKeeper MCP Demo](assets/agent_keeper_demo.gif)
 
@@ -72,9 +72,33 @@ AgentKeeper sits as a local middleware between the agent runtime and blockchain 
 * Bounded to a maximum of 16 steps per workflow to eliminate non-deterministic loop reinterpretation.
 
 ### 3. Autonomous HTTP 402 Micropayments (`keeper_x402_settle`)
-* Parses RFC-7231 `WWW-Authenticate` and `402 Payment Required` headers.
-* Generates localized EIP-712 permit signatures within a hard daily allowance (e.g. $10/day spend limit).
-* Automatically retries the paywalled request and returns clean data to the agent.
+* Signs an EIP-712 `Permit(payer, payee, amount, nonce, deadline)` under a per-permit random 256-bit nonce, capped by a cumulative spend limit (`MAX_AUTONOMOUS_PAYMENT_USDC`).
+* The permit is bound to a verifying contract you deploy: [`contracts/X402Receipt.sol`](contracts/X402Receipt.sol). The address comes from `ARC_X402_VERIFIER` (EIP-55 checksum). **If it is unset or invalid the tool fails closed** and returns an error; there is no default address.
+* Defaults to Arc Mainnet (chain 5042). Other tools' chain defaults are unchanged; `keeper_x402_settle` requests for any other chain currently fail closed because no verifier is configured for them.
+
+#### Arc x402 Receipt Verifier
+
+`contracts/X402Receipt.sol` is a small (68 lines, Solidity ^0.8.20, no dependencies) non-custodial receipt registry. `settle(payer, payee, amount, nonce, deadline, signature)` verifies the payer's EIP-712 signature (domain: name, version, chainId, `verifyingContract = address(this)`), rejects expired deadlines and reused `(payer, nonce)` pairs, rejects non-canonical (high-s) signatures, records the nonce and emits `Settled(payer, payee, amount, nonce)`.
+
+* It holds no funds and moves none: nothing is payable, it makes no token calls, and it has no owner, admin or upgrade path. It is a signed-receipt registry, not a payment rail. Only EOA signers are supported (`ecrecover`, no EIP-1271).
+* Compiled with `--evm-version paris` (no `PUSH0`) because Arc's opcode support has not been verified here.
+* Tested in-process (solc + eth-tester): valid signature accepted; wrong signer, tampered fields, expired deadline, replayed nonce, wrong chainId, wrong verifying contract, high-s twin and malformed signatures rejected. These tests do not exercise Arc itself.
+
+```bash
+# 1. Dry run (default): compile, print the unsigned deployment tx, gas and USDC cost estimate. No key is read.
+python3 scripts/deploy_arc_verifier.py
+
+# 2. Deploy (operator, funded wallet, own shell). Reads AGENT_PRIVATE_KEY from the environment only.
+export AGENT_PRIVATE_KEY=0x...
+python3 scripts/deploy_arc_verifier.py --broadcast
+export ARC_X402_VERIFIER=<deployed address>   # placeholder: set to the address the script prints
+
+# 3. One live settle() call against the deployed verifier (dry run by default; --broadcast sends).
+python3 scripts/broadcast_live_arc_tx.py
+python3 scripts/broadcast_live_arc_tx.py --broadcast
+```
+
+Status: contract, tests and scripts are done. **Not yet done:** deployment on Arc Mainnet and the live `settle()` transaction, which need a wallet funded with a little native USDC. Deployed address: _pending_. Transaction hash: _pending_.
 
 ### 4. Merkle Audit Trail (`keeper_audit_verify`)
 * Builds cryptographic inclusion proofs for all relay actions using a flat array Merkle heap.
@@ -138,7 +162,7 @@ AgentKeeper-MCP maintains an internal engineering checklist, organized loosely a
 | **Area 5: Leadership & Quality** | Internal quality notes ([`QUALITY_MANUAL.md`](iso9001_compliance/QUALITY_MANUAL.md)), zero-defect policy | `[PASS] 100%` |
 | **Area 6: Planning & Risk** | Internal risk register ([`RISK_REGISTER.md`](iso9001_compliance/RISK_REGISTER.md)), Merkle depth bounds ($\le 64$), EIP-55 checksum | `[PASS] 100%` |
 | **Area 7: Support & Qualification** | Typed Pydantic schemas, Ruff static analysis, Python 3.12 pinned runtime | `[PASS] 100%` |
-| **Area 8: Operation & V&V** | Traceability notes ([`TRACEABILITY_MATRIX.md`](iso9001_compliance/TRACEABILITY_MATRIX.md)), 112 automated tests, FastMCP integration | `[PASS] 100%` |
+| **Area 8: Operation & V&V** | Traceability notes ([`TRACEABILITY_MATRIX.md`](iso9001_compliance/TRACEABILITY_MATRIX.md)), 137 automated tests, FastMCP integration | `[PASS] 100%` |
 | **Area 9: Performance Evaluation** | Dynamic oracle anchoring verification, Arc Mainnet live query, GitHub Actions CI | `[PASS] 100%` |
 | **Area 10: Continual Improvement** | Hypothesis property fuzz engine (5,000 iterations), automated checklist script | `[PASS] 100%` |
 
@@ -174,9 +198,9 @@ cd agent-keeper-mcp
 # Setup environment
 uv venv --python python3.12
 source .venv/bin/activate
-pip install -e .
+pip install -e . pytest hypothesis "web3[tester]" py-solc-x
 
-# Run test suite
+# Run test suite (contract tests compile with solc from PATH, or download 0.8.20 via py-solc-x)
 pytest
 ```
 
@@ -184,26 +208,7 @@ pytest
 
 ## Test Coverage & Reliability
 
-```
-============================== test session starts ==============================
-platform darwin -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0
-collected 112 items
-
-tests/test_arc_mainnet.py ......                                         [  5%]
-tests/test_audit.py ....                                                 [  8%]
-tests/test_blackbox.py .................                                 [ 24%]
-tests/test_creditcoin.py .....................................           [ 57%]
-tests/test_fuzz_merkle.py ....                                           [ 60%]
-tests/test_merkle_tree.py ..                                             [ 62%]
-tests/test_relay.py ....                                                 [ 66%]
-tests/test_schemas.py ..........                                         [ 75%]
-tests/test_server.py .......                                             [ 81%]
-tests/test_whitebox.py ...........                                       [ 91%]
-tests/test_workflow.py ......                                            [ 96%]
-tests/test_x402.py ....                                                  [100%]
-
-============================= 112 passed in 14.40s =============================
-```
+`make test` (or `pytest`) runs 137 tests at this commit, all passing. That includes the x402 fail-closed tests and the `X402Receipt.sol` contract tests, which compile the contract and run it on an in-memory EVM. The contract tests need `web3[tester]` and `py-solc-x` (dev dependencies; `contracts` extra in `pyproject.toml`).
 
 * **Deterministic Invariants:** Bounded retry loops, minimum 2 runtime assertions per function, zero dynamic heap allocations on execution path.
 * **Security Constraints:** Enforces parameter bounds and rejects transactions exceeding pre-set gas ceilings.
