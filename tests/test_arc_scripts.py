@@ -52,6 +52,53 @@ def test_settle_script_dry_run_ignores_key_and_broadcast_needs_it():
     assert r.returncode == 1 and "AGENT_PRIVATE_KEY" in r.stdout
 
 
+def test_settle_broadcast_signs_and_sends_with_mocked_rpc(monkeypatch):
+    """--broadcast path with a mocked RPC: signs a real tx to the verifier carrying settle() calldata."""
+    from eth_account import Account
+
+    from agent_keeper.arc_chain import SETTLE_SIGNATURE
+    from eth_utils import keccak
+
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import broadcast_live_arc_tx as bcast
+
+    sent = {}
+
+    def fake_rpc(method, params, *a, **kw):
+        if method == "eth_chainId":
+            return hex(5042)
+        if method == "eth_getCode":
+            return "0x6080"
+        if method in ("eth_call", "eth_getTransactionReceipt"):
+            return {"status": "0x1", "blockNumber": "0x1", "gasUsed": "0x1", "transactionHash": "0x" + "a" * 64} \
+                if method == "eth_getTransactionReceipt" else "0x"
+        if method == "eth_estimateGas":
+            return hex(60_000)
+        if method == "eth_getTransactionCount":
+            return "0x3"
+        if method == "eth_gasPrice":
+            return hex(10**10)
+        if method == "eth_sendRawTransaction":
+            sent["raw"] = params[0]
+            return "0x" + "a" * 64
+        raise AssertionError(method)
+
+    monkeypatch.setattr(bcast, "rpc_call", fake_rpc)
+    monkeypatch.setattr(bcast, "wait_for_receipt", lambda h: fake_rpc("eth_getTransactionReceipt", [h]))
+    acct = Account.create()
+    monkeypatch.setenv("AGENT_PRIVATE_KEY", acct.key.hex())
+    args = type("A", (), {"payee": None, "amount": 1000, "payer": None})()
+    assert bcast.broadcast(VERIFIER, args) == 0
+    tx = Account.recover_transaction(sent["raw"])
+    assert tx == acct.address
+    from eth_account._utils.legacy_transactions import (  # decode to inspect `to` and calldata
+        Transaction,
+    )
+    decoded = Transaction.from_bytes(bytes.fromhex(sent["raw"][2:]))
+    assert decoded.to.hex().lower() == VERIFIER[2:].lower() and decoded.value == 0
+    assert decoded.data[:4] == keccak(text=SETTLE_SIGNATURE)[:4]
+
+
 def test_script_calldata_is_accepted_by_compiled_contract():
     pytest.importorskip("eth_tester")
     from eth_account import Account
