@@ -19,11 +19,21 @@ build-backend = "setuptools.build_meta"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = ["no_verifier_env: run without ARC_X402_VERIFIER set"]
 
 [tool.ruff.lint]
 ignore = ["BLE001"]
 
+[project.optional-dependencies]
+# Contract tests only: in-memory EVM + solc downloader. Not needed at runtime.
+contracts = [
+    "web3[tester]>=7.0.0",
+    "py-solc-x>=2.0.0",
+]
+
 [dependency-groups]
 dev = [
     "hypothesis>=6.167.1",
+    "web3[tester]>=7.0.0",
+    "py-solc-x>=2.0.0",
 ]
