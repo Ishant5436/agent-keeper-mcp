@@ -170,6 +170,11 @@ class X402PaymentResponse(BaseModel):
     recipient: str
     auth_token: str | None = None
     signature: str | None = None
+    permit: dict[str, Any] | None = Field(
+        default=None,
+        description="Fields (payer, payee, amount, nonce, deadline, chainId, verifyingContract) "
+        "needed to redeem `signature` via X402Receipt.settle().",
+    )
     unblocked_data: dict[str, Any] | None = None
     error: str | None = None
 

@@ -1,131 +1,135 @@
 #!/usr/bin/env python3
-"""Broadcast one real, minimal transaction on Circle Arc Mainnet.
+"""Broadcast ONE real X402Receipt.settle(...) call on Circle Arc Mainnet.
 
-This is the one piece of Arc Microgrants eligibility ("a live deployment on
-Arc mainnet, with a link we can open") that cannot be produced by code alone:
-it requires a wallet funded with a small amount of USDC (Arc's native gas
-token) and its private key, supplied by you, in your own shell.
+This is the on-chain evidence step for Arc Microgrants: a signed x402 permit
+redeemed against the deployed contracts/X402Receipt.sol verifier. It requires
+(1) the verifier already deployed (scripts/deploy_arc_verifier.py --broadcast),
+(2) ARC_X402_VERIFIER set to its checksum address, and (3) a wallet holding a
+little native USDC for gas.
 
-This script never asks for or logs the private key. It reads it from the
-AGENT_PRIVATE_KEY environment variable, signs ONE zero-value self-transfer
-(you send 0 USDC to your own address, spending only the gas fee, a few
-cents), and broadcasts it via raw JSON-RPC. Nothing else about your funds
-is touched.
+DEFAULT = DRY RUN: prints the permit and the settle() call it would send. It
+never reads a private key and sends nothing.
 
-Usage:
-    export AGENT_PRIVATE_KEY=0x...   # your own wallet, funded with a little
-                                      # USDC on Arc Mainnet for gas
-    python3 scripts/broadcast_live_arc_tx.py
+    export ARC_X402_VERIFIER=0x...                   # deployed address
+    python3 scripts/broadcast_live_arc_tx.py         # dry run
+    export AGENT_PRIVATE_KEY=0x...                   # your own shell only
+    python3 scripts/broadcast_live_arc_tx.py --broadcast
 
-Prerequisites:
-    1. A wallet address funded with a small amount of USDC on Arc Mainnet
-       (Chain ID 5042). USDC is Arc's native gas token, so this is the only
-       funding needed.
-    2. That wallet's private key, exported as AGENT_PRIVATE_KEY in your own
-       terminal session. Do not paste it into chat or a file.
+--broadcast reads AGENT_PRIVATE_KEY from the environment only (never a file,
+never printed). The same account signs the permit (as payer) and pays gas.
+settle() only records a receipt and emits an event; it moves no USDC.
 """
 
+import argparse
 import json
 import os
+import secrets
 import sys
 import time
 
-import httpx
-from eth_account import Account
+from eth_utils import to_checksum_address
 
-ARC_RPC_URL = os.environ.get("ARC_RPC_URL", "https://rpc.mainnet.arc.io")
-ARC_CHAIN_ID = 5042
+from agent_keeper.arc_chain import (
+    ARC_CHAIN_ID,
+    encode_settle_calldata,
+    explorer_url,
+    rpc_call,
+    rpc_url,
+    wait_for_receipt,
+)
+from agent_keeper.x402 import VerifierNotConfiguredError, build_permit_typed_data, resolve_verifier
 
-
-def _rpc_call(method: str, params: list) -> dict:
-    """Raw JSON-RPC call against the Arc Mainnet endpoint."""
-    assert isinstance(method, str) and len(method) > 0, "method must be non-empty"
-    with httpx.Client(timeout=15.0) as client:
-        resp = client.post(
-            ARC_RPC_URL,
-            json={"jsonrpc": "2.0", "method": method, "params": params, "id": 1},
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        assert "error" not in data or data["error"] is None, f"RPC error: {data.get('error')}"
-        return data.get("result")
+PERMIT_TTL_SECONDS = 600
 
 
-def broadcast_self_transfer() -> str:
-    """Sign and submit a zero-value self-transfer, returning the real tx hash."""
-    private_key = os.environ.get("AGENT_PRIVATE_KEY", "")
-    assert private_key, "Set AGENT_PRIVATE_KEY in your own shell before running this script."
+def build_permit(verifier: str, payer: str, payee: str, amount: int) -> dict:
+    return build_permit_typed_data(
+        ARC_CHAIN_ID, verifier, payer, payee, amount, secrets.randbits(256), int(time.time()) + PERMIT_TTL_SECONDS
+    )
 
-    account = Account.from_key(private_key)
-    address = account.address
 
-    nonce_hex = _rpc_call("eth_getTransactionCount", [address, "pending"])
-    assert nonce_hex is not None, "Could not fetch nonce; check ARC_RPC_URL connectivity."
-    nonce = int(nonce_hex, 16)
+def dry_run(verifier: str, args) -> int:
+    payer = args.payer or "<AGENT address, derived from AGENT_PRIVATE_KEY at --broadcast>"
+    payee = args.payee or payer
+    permit = build_permit(verifier, payer, payee, args.amount)
+    print("== DRY RUN (no key read, nothing signed or sent) ==")
+    print(f"RPC: {rpc_url()} (default UNVERIFIED)   verifier: {verifier}")
+    print("EIP-712 permit that would be signed by the payer:\n" + json.dumps(permit["message"], indent=2))
+    print(f"Domain: {json.dumps(permit['domain'])}")
+    print("Call: settle(payer, payee, amount, nonce, deadline, signature) on the verifier, value 0.")
+    print("To send: export AGENT_PRIVATE_KEY in your own shell, then re-run with --broadcast.")
+    return 0
 
-    gas_price_hex = _rpc_call("eth_gasPrice", [])
-    gas_price = int(gas_price_hex, 16)
 
-    tx = {
-        "chainId": ARC_CHAIN_ID,
-        "nonce": nonce,
-        "to": address,
-        "value": 0,
-        "gas": 21000,
-        "gasPrice": gas_price,
-        "data": b"",
-    }
+def preflight(verifier: str, sender: str, calldata: bytes) -> tuple[int, int, int]:
+    """Read-only checks; returns (nonce, gas, gas_price) or raises SystemExit."""
+    if int(rpc_call("eth_chainId", []), 16) != ARC_CHAIN_ID:
+        raise SystemExit(f"[ABORTED] RPC is not chain {ARC_CHAIN_ID}.")
+    if rpc_call("eth_getCode", [verifier, "latest"]) in (None, "0x"):
+        raise SystemExit(f"[ABORTED] No contract code at {verifier}; deploy X402Receipt first.")
+    call = {"from": sender, "to": verifier, "data": "0x" + calldata.hex()}
+    try:
+        rpc_call("eth_call", [call, "latest"])  # read-only simulation; reverts raise
+        gas = int(rpc_call("eth_estimateGas", [call]), 16)
+    except RuntimeError as exc:
+        raise SystemExit(f"[ABORTED] settle() simulation failed: {exc}") from exc
+    nonce = int(rpc_call("eth_getTransactionCount", [sender, "pending"]), 16)
+    gas_price = int(rpc_call("eth_gasPrice", []), 16)
+    return nonce, int(gas * 1.2), gas_price
+
+
+def broadcast(verifier: str, args) -> int:
+    from eth_account import Account  # imported late: the dry-run path never touches keys
+    from eth_account.messages import encode_typed_data
+
+    key = os.environ.get("AGENT_PRIVATE_KEY", "")
+    if not key:
+        print("[ABORTED] --broadcast requires AGENT_PRIVATE_KEY in the environment.")
+        return 1
+    account = Account.from_key(key)
+    payee = args.payee or account.address
+    permit = build_permit(verifier, account.address, payee, args.amount)
+    signed_permit = Account.sign_message(encode_typed_data(full_message=permit), private_key=key)
+    m = permit["message"]
+    calldata = encode_settle_calldata(
+        m["payer"], m["payee"], m["amount"], m["nonce"], m["deadline"], bytes(signed_permit.signature)
+    )
+    nonce, gas, gas_price = preflight(verifier, account.address, calldata)
+    tx = {"chainId": ARC_CHAIN_ID, "nonce": nonce, "to": verifier, "value": 0, "gas": gas,
+          "gasPrice": gas_price, "data": calldata}
     signed = account.sign_transaction(tx)
-    raw_hex = "0x" + signed.raw_transaction.hex() if hasattr(signed, "raw_transaction") else signed.rawTransaction.hex()
-
-    tx_hash = _rpc_call("eth_sendRawTransaction", [raw_hex])
-    assert tx_hash and tx_hash.startswith("0x"), f"Unexpected RPC response: {tx_hash}"
-    return tx_hash
-
-
-def wait_for_receipt(tx_hash: str, max_wait_seconds: int = 60) -> dict | None:
-    """Poll for the transaction receipt, bounded by max_wait_seconds."""
-    assert max_wait_seconds > 0, "max_wait_seconds must be positive"
-    assert (
-        isinstance(tx_hash, str) and tx_hash.startswith("0x") and len(tx_hash) == 66
-    ), "tx_hash must be valid 32-byte hex string"
-    deadline = time.time() + max_wait_seconds
-    while time.time() < deadline:
-        receipt = _rpc_call("eth_getTransactionReceipt", [tx_hash])
-        if receipt is not None:
-            return receipt
-        time.sleep(3)
-    return None
+    raw = getattr(signed, "raw_transaction", None) or signed.rawTransaction
+    tx_hash = rpc_call("eth_sendRawTransaction", ["0x" + bytes(raw).hex()])
+    print(f"Submitted settle(). tx_hash = {tx_hash}\nExplorer: {explorer_url()}/tx/{tx_hash}")
+    receipt = wait_for_receipt(tx_hash)
+    if receipt is None:
+        print("[PENDING] Not confirmed within the wait window; check the explorer link above.")
+        return 0
+    if receipt.get("status") != "0x1":
+        print("[REVERTED] Transaction reverted; do not cite it as evidence.")
+        return 1
+    print(json.dumps({k: receipt.get(k) for k in ("transactionHash", "blockNumber", "gasUsed", "status")}, indent=2))
+    print(f"[CONFIRMED] Paste tx_hash {tx_hash} and the verifier address {verifier} into ARC_MICROGRANTS_SUBMISSION.md.")
+    return 0
 
 
 def main() -> int:
-    print("=" * 70)
-    print("AgentKeeper-MCP: Live Arc Mainnet Broadcast (Arc Microgrants evidence)")
-    print("=" * 70)
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--broadcast", action="store_true", help="sign with AGENT_PRIVATE_KEY (env) and send")
+    parser.add_argument("--payer", help="dry-run display only; --broadcast derives it from the key")
+    parser.add_argument("--payee", help="receipt payee (default: the payer itself)")
+    parser.add_argument("--amount", type=int, default=1000,
+                        help="receipt amount in USDC base units, 6 decimals (default 1000 = 0.001); no funds move")
+    args = parser.parse_args()
+    for name in ("payer", "payee"):
+        if getattr(args, name):
+            setattr(args, name, to_checksum_address(getattr(args, name)))
     try:
-        tx_hash = broadcast_self_transfer()
-    except AssertionError as e:
-        print(f"[ABORTED] {e}")
+        verifier = resolve_verifier(ARC_CHAIN_ID)
+    except VerifierNotConfiguredError as exc:
+        print(f"[ABORTED] {exc}")
         return 1
-
-    print(f"Submitted. tx_hash = {tx_hash}")
-    print(f"Explorer: https://explorer.arc.network/tx/{tx_hash}")
-    print("Waiting for confirmation...")
-
-    receipt = wait_for_receipt(tx_hash)
-    if receipt is None:
-        print("[PENDING] Not yet confirmed within the wait window; check the explorer link above.")
-        return 0
-
-    status = receipt.get("status")
-    block = receipt.get("blockNumber")
-    print(json.dumps(receipt, indent=2))
-    if status == "0x1":
-        print(f"[CONFIRMED] Included in block {int(block, 16) if block else '?'}.")
-        print("Paste tx_hash and the explorer link into ARC_MICROGRANTS_SUBMISSION.md as live deployment evidence.")
-    else:
-        print("[REVERTED] Transaction was included but reverted; do not cite it as working evidence.")
-    return 0
+    return broadcast(verifier, args) if args.broadcast else dry_run(verifier, args)
 
 
 if __name__ == "__main__":
