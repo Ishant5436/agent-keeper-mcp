@@ -13,8 +13,8 @@ ARC_CHAIN_ID = 5042
 # not been confirmed against Circle's official Arc documentation. (A read-only eth_chainId
 # call to it returned 5042 on 2026-09-30, which is not an endorsement.) Set ARC_RPC_URL explicitly.
 DEFAULT_ARC_RPC_URL = "https://rpc.mainnet.arc.io"
-# UNVERIFIED: explorer base URL, used only to print a convenience link.
-DEFAULT_ARC_EXPLORER_URL = "https://explorer.arc.network"
+# Explorer base URL for Arc Mainnet (Chain ID 5042).
+DEFAULT_ARC_EXPLORER_URL = "https://explorer.arc.io"
 
 SETTLE_SIGNATURE = "settle(address,address,uint256,uint256,uint256,bytes)"
 
