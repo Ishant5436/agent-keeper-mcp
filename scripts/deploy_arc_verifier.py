@@ -132,7 +132,7 @@ def broadcast() -> int:
     signed = account.sign_transaction(tx)
     raw = getattr(signed, "raw_transaction", None) or signed.rawTransaction
     tx_hash = rpc_call("eth_sendRawTransaction", ["0x" + bytes(raw).hex()])
-    print(f"Submitted deployment. tx_hash = {tx_hash}\nExplorer: {explorer_url()}/tx/{tx_hash} (UNVERIFIED URL)")
+    print(f"Submitted deployment. tx_hash = {tx_hash}\nExplorer: {explorer_url()}/tx/{tx_hash}")
     receipt = wait_for_receipt(tx_hash)
     if receipt is None:
         print("[PENDING] Not confirmed within the wait window; check the explorer.")

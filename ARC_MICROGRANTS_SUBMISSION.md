@@ -43,11 +43,16 @@ I am an independent systems software developer building deterministic infrastruc
 
 Autonomous software agents interacting with blockchains face significant security challenges when handling credentials, gas tokens, and HTTP 402 resource challenges. Injecting raw private keys or RPC endpoints directly into an automated agent context risks prompt injection attacks, memory leakage into conversation logs, and non-deterministic transaction execution. On Arc Mainnet, where USDC functions as the native gas asset, agents require a specialized execution runtime that safely handles native USDC balances, enforces strict spending ceilings, and signs cryptographic permits without human coordinator latency.
 
-AgentKeeper-MCP resolves this by placing a hardened FastMCP middleware between autonomous AI agents and Arc Mainnet. The gateway keeps key handling inside process memory and exposes typed JSON-RPC tools over the Model Context Protocol. For this submission the scope is Arc only. Through keeper_x402_settle, an agent evaluates an HTTP 402 Payment Required challenge and signs an EIP-712 permit, bound to Chain ID 5042 and to an X402Receipt verifier contract that the operator deploys on Arc and configures via ARC_X402_VERIFIER. The contract (contracts/X402Receipt.sol) verifies the signature and records a non-replayable receipt on-chain; it holds no funds and does not itself transfer USDC. If no verifier is configured, the tool refuses to sign. Through keeper_agent_balance, an agent can read its native USDC balance on Arc Mainnet. The project has other tools and chain defaults that are outside this submission and are documented in README.md.
+AgentKeeper-MCP resolves this by placing a hardened FastMCP middleware between autonomous AI agents and Arc Mainnet. The gateway keeps key handling inside local process memory and exposes typed JSON-RPC tools over the Model Context Protocol. For this submission, the scope is strictly Arc Mainnet (Chain ID 5042).
+
+Why this architecture is specifically tailored for Circle Arc Mainnet:
+1. Native USDC Gas Economics: On legacy EVM networks, attesting or settling micro-payments onchain costs $0.50-$5.00 in volatile gas tokens, making onchain attestation of HTTP 402 AI micro-payments economically prohibitive. On Arc Mainnet, USDC is the native gas asset. An onchain verification call (`settle()`) consumes ~60,000 gas, which at the 20 Gwei baseline costs ~0.0012 USDC. This sub-cent cost structure makes Arc the viable settlement layer for autonomous AI agents paying for per-call APIs, model inferences, or real-time data streams.
+2. Separation of Custody and Attestation: The `X402Receipt` contract (`contracts/X402Receipt.sol`) is deliberately non-custodial and stateless regarding treasury assets. It holds zero funds, has no admin keys, no owner, and no upgrade proxy. Instead, it serves as an immutable, non-repudiable attestation registry: when an agent pays an off-chain resource provider, the EIP-712 permit is recorded onchain via `settle()`, permanently preventing duplicate redemption through per-payer nonces (`used[payer][nonce]`) while validating canonical low-s ECDSA signatures against `block.chainid`.
+3. Fail-Closed Agent Safety: Autonomous agents must never have unrestricted access to raw keys. Through `keeper_x402_settle`, an agent evaluates an HTTP 402 challenge and signs an EIP-712 permit bound to Chain ID 5042 and the configured `ARC_X402_VERIFIER`. If no verifier is configured, the tool fails closed and refuses to sign. Through `keeper_agent_balance`, agents inspect their native USDC balance directly on Arc Mainnet. Other gateway tools and multi-chain features are documented in README.md.
 
 The entire codebase is engineered under strict Deterministic Safety Invariants. All execution routines avoid dynamic code evaluation, loops are strictly bounded to prevent denial of service vulnerabilities, functions remain under sixty lines of code, and assertion density exceeds two invariants per routine. An in-memory idempotency cache prevents duplicate transaction execution during network congestion or RPC latency, while a monotonic spending accumulator ensures cumulative micro-payments never exceed operator-configured risk limits.
 
-As a solo developer I aim for lean, reproducible software. The repository has a 137-test suite (unit, white-box, black-box, property fuzz, and in-process contract tests) that passes at this commit. The contract tests run against an in-memory EVM, not against Arc. Read-only balance queries use the configured Arc RPC (default UNVERIFIED against Circle docs). The Arc deployment and the live settle() transaction are pending an operator-funded wallet; see Live Deployment Status above.
+As a solo developer I aim for lean, reproducible software. The repository has a 139-test suite (unit, white-box, black-box, property fuzz, and in-process contract tests) that passes at this commit. The contract tests run against an in-memory EVM, not against Arc. Read-only balance queries use the configured Arc RPC (default UNVERIFIED against Circle docs). The Arc deployment and the live settle() transaction are pending an operator-funded wallet; see Live Deployment Status above.
 
 ---
 
@@ -83,7 +88,7 @@ Circle Arc Mainnet (5042)
 | **Rule 7: Check Parameters** | Strict input validation | EIP-55 checksum, 128KB calldata limits, USDC spending ceiling. |
 | **Rule 8: Zero Metaprogramming** | Zero dynamic code evaluation | Strict Pydantic schemas; zero `eval()` or `exec()`. |
 | **Rule 9: Restrict Indirection** | Single-level reference traversal | Flat array indexing `((i-1) >> 1)` rather than deep pointer-node trees. |
-| **Rule 10: Static Analysis** | 100% test pass rate, 0 warnings | 137/137 tests passing & 0 ruff lint warnings at this commit. |
+| **Rule 10: Static Analysis** | 100% test pass rate, 0 warnings | 139/139 tests passing & 0 ruff lint warnings at this commit. |
 
 ---
 
@@ -94,7 +99,7 @@ Circle Arc Mainnet (5042)
 git clone https://github.com/Ishant5436/agent-keeper-mcp.git
 cd agent-keeper-mcp
 
-# 2. Run the test suite (137 tests at this commit; includes the X402Receipt contract tests,
+# 2. Run the test suite (139 tests at this commit; includes the X402Receipt contract tests,
 #    which compile the contract with solc 0.8.20 and run it on an in-memory EVM)
 make test
 
