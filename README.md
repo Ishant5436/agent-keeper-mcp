@@ -6,13 +6,13 @@
 
 > A deterministic, non-custodial Model Context Protocol (MCP) execution gateway for autonomous AI agents on Arc Mainnet with native USDC gas settlement and HTTP 402 micro-payments.
 
-[![Tests](https://img.shields.io/badge/tests-137%2F137%20passing-brightgreen)](https://github.com/Ishant5436/agent-keeper-mcp)
+[![Tests](https://img.shields.io/badge/tests-139%2F139%20passing-brightgreen)](https://github.com/Ishant5436/agent-keeper-mcp)
 [![CI](https://github.com/Ishant5436/agent-keeper-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Ishant5436/agent-keeper-mcp/actions)
 [![Arc Mainnet](https://img.shields.io/badge/Arc%20Mainnet-Native%20USDC%20(5042)-teal)](https://explorer.arc.io)
 [![Creditcoin](https://img.shields.io/badge/Creditcoin%203.0-Attestcoin%20Settlement-blue)](src/agent_keeper/creditcoin.py)
 [![Safety Checklist](https://img.shields.io/badge/Internal%20Safety%20Checklist-7%2F7%20areas-success)](iso9001_compliance/QUALITY_MANUAL.md)
 [![Safety Standard](https://img.shields.io/badge/Safety%20Standard-Deterministic%20Invariants-purple)](src/agent_keeper/audit.py)
-[![Upstream PR](https://img.shields.io/badge/KeeperHub-PR%20%232547%20(Under%20Review)-orange)](https://github.com/KeeperHub/keeperhub/pull/2547)
+[![Upstream Merged](https://img.shields.io/badge/KeeperHub-PR%20%232547%20%26%20%232640%20(Merged)-brightgreen)](https://github.com/KeeperHub/keeperhub/pull/2547)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 > **Arc Mainnet Workflow Walkthrough (local, no broadcast):** `python3 scripts/demo_arc_mainnet.py` | **Instant MCP Demo:** `make demo` | **Arc verifier:** [`contracts/X402Receipt.sol`](contracts/X402Receipt.sol) (see "Arc x402 Receipt Verifier" below; not yet deployed)

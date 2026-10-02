@@ -7,7 +7,7 @@
 **Target Network:** Arc Mainnet (Chain ID 5042)  
 **Author:** Ishant Panchal (`Ishant5436` / `ishant.p@somaiya.edu`)  
 **Repository:** [https://github.com/Ishant5436/agent-keeper-mcp](https://github.com/Ishant5436/agent-keeper-mcp)  
-**Upstream Integration:** [KeeperHub PR #2547](https://github.com/KeeperHub/keeperhub/pull/2547)  
+**Upstream Integration:** [KeeperHub PR #2547](https://github.com/KeeperHub/keeperhub/pull/2547) (Merged into `staging`)  
 
 ---
 
