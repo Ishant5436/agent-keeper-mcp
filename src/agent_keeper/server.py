@@ -67,13 +67,13 @@ def _query_rpc_balance(address: str, chain_id: int) -> dict[str, Any]:
                 result = resp.json().get("result")
                 if result and isinstance(result, str):
                     val_wei = int(result, 16)
-                    decimals = 6 if chain_id == 5042 else 18
+                    decimals = 6 if chain_id in (5042, 5042002) else 18
                     val_eth = val_wei / 10**decimals
                     return {
                         "balance_wei": val_wei,
                         "balance_eth": round(val_eth, 6),
                         "balance_native": round(val_eth, 6),
-                        "symbol": "USDC" if chain_id == 5042 else "ETH",
+                        "symbol": "USDC" if chain_id in (5042, 5042002) else "ETH",
                         "source": "live_rpc",
                     }
     except Exception as e:
@@ -157,9 +157,12 @@ def keeper_audit_verify(
 def keeper_agent_balance(address: str | None = None) -> dict[str, Any]:
     """Inspect the AI agent's live multi-chain onchain treasury balances, spent budget, and remaining limits."""
     target_addr = address or _payment_manager.signer_address
+    assert isinstance(target_addr, str) and target_addr.startswith("0x"), "Target address must be valid hex"
+    assert len(target_addr) == 42, "Target address must be 42 characters"
 
     chain_queries = {
         "Arc Mainnet (5042)": (5042, _query_rpc_balance(target_addr, 5042)),
+        "Arc Testnet (5042002)": (5042002, _query_rpc_balance(target_addr, 5042002)),
         "Base Mainnet (8453)": (8453, _query_rpc_balance(target_addr, 8453)),
         "Arbitrum One (42161)": (42161, _query_rpc_balance(target_addr, 42161)),
         "Ethereum Mainnet (1)": (1, _query_rpc_balance(target_addr, 1)),
@@ -167,7 +170,7 @@ def keeper_agent_balance(address: str | None = None) -> dict[str, Any]:
 
     balances: dict[str, Any] = {}
     for name, (cid, data) in chain_queries.items():
-        sym = "USDC" if cid == 5042 else "ETH"
+        sym = "USDC" if cid in (5042, 5042002) else "ETH"
         if data.get("source") == "live_rpc":
             balances[name] = {
                 "ETH": f"{data.get('balance_eth', 0.0):.6f} {sym}",

@@ -8,3 +8,8 @@ build/
 dist/
 .env
 target/
+*.key
+*.pem
+*keypair*.json
+deployer*.json
+.secrets/
