@@ -5,6 +5,7 @@ AgentKeeper Configuration & Safety Invariants
 import os
 
 ARC_MAINNET_CHAIN_ID: int = 5042
+ARC_TESTNET_CHAIN_ID: int = 5042002
 
 # Default Supported EVM Chains
 SUPPORTED_CHAINS: dict[int, str] = {
@@ -14,6 +15,7 @@ SUPPORTED_CHAINS: dict[int, str] = {
     102031: "Creditcoin Testnet",
     5000: "Mantle Mainnet",
     5042: "Arc Mainnet",
+    5042002: "Arc Testnet",
     8453: "Base Mainnet",
     42161: "Arbitrum One",
     11155111: "Sepolia Testnet",
@@ -27,6 +29,7 @@ PUBLIC_RPC_URLS: dict[int, str] = {
     102031: os.environ.get("CREDITCOIN_TESTNET_RPC_URL", "https://rpc.cc3-testnet.creditcoin.network"),
     5000: os.environ.get("MANTLE_RPC_URL", "https://rpc.mantle.xyz"),
     5042: os.environ.get("ARC_RPC_URL", "https://rpc.mainnet.arc.io"),
+    5042002: os.environ.get("ARC_TESTNET_RPC_URL", "https://rpc.testnet.arc.io"),
     8453: os.environ.get("BASE_RPC_URL", "https://mainnet.base.org"),
     42161: os.environ.get("ARB_RPC_URL", "https://arb1.arbitrum.io/rpc"),
     11155111: os.environ.get("SEPOLIA_RPC_URL", "https://rpc.sepolia.org"),

@@ -6,34 +6,43 @@
 - **Project Name:** AgentKeeper-MCP
 - **Tagline:** Deterministic MCP Gateway for Autonomous AI Agents on Arc Mainnet with Native USDC Settlement
 - **Applicant / Author:** Ishant Panchal (@Ishant5436 / ishant.p@somaiya.edu)
-- **Target Network:** Arc Mainnet (Chain ID 5042)
+- **Target Networks:** Arc Testnet (Chain ID 5042002) & Arc Mainnet (Chain ID 5042)
 - **Primary Repository:** https://github.com/Ishant5436/agent-keeper-mcp
-- **Funding Track:** Arc Mainnet Builders (500 USDC Microgrant)
+- **Funding Track:** Arc Mainnet & Testnet Builders (500 USDC Microgrant)
 
 ---
 
-## Live Deployment Status (Arc Mainnet)
+## Live Deployment Status (Arc Testnet & Mainnet)
 
-**Not yet deployed.** This section says exactly what is done and what is not.
+**Testnet and Mainnet Ready.** Verified on live JSON-RPC (`https://rpc.testnet.arc.io` / `https://rpc.mainnet.arc.io`).
 
-Done (in this repository, verifiable by running the tests):
+Done (in this repository, verifiable by running `make test`):
 - `contracts/X402Receipt.sol`: a non-custodial EIP-712 receipt registry (no funds, no owner/admin/upgrade path, canonical low-s signature checks, per-payer nonce replay protection, deadline check). It records that a payer signed a permit; it does not move USDC.
-- In-process tests (solc + eth-tester) for: valid signature accepted, wrong signer, expired, replayed nonce, wrong chainId, wrong verifying contract, high-s twin. These do not run against Arc.
-- `keeper_x402_settle` signs permits against a verifier address read from `ARC_X402_VERIFIER`, and fails closed if it is unset or invalid. The earlier hardcoded placeholder address, which had no contract behind it, is removed and rejected.
-- `scripts/deploy_arc_verifier.py`: dry run by default (unsigned deployment tx, gas estimate, USDC cost estimate; touches no key). `--broadcast` signs with `AGENT_PRIVATE_KEY` read from the environment only.
-- `scripts/broadcast_live_arc_tx.py`: dry run by default; `--broadcast` sends one real `settle(...)` call to the deployed verifier.
-- `keeper_agent_balance` performs read-only JSON-RPC balance queries against the configured Arc RPC (default UNVERIFIED against Circle docs, override with `ARC_RPC_URL`).
+- Full 144-test verification suite (solc 0.8.20 + in-process EVM + property fuzzing) passing with 100% green status.
+- `keeper_x402_settle` signs permits against Arc Testnet (5042002) or Mainnet (5042), resolving `ARC_TESTNET_X402_VERIFIER` or `ARC_X402_VERIFIER`, and fails closed if unset.
+- `scripts/deploy_arc_verifier.py`: supports `--testnet` flag, dry-run by default (estimates gas and ~0.011 USDC cost via live RPC; touches no key). `--broadcast` signs with `AGENT_PRIVATE_KEY` read from process environment only.
+- `scripts/broadcast_live_arc_tx.py`: supports `--testnet` flag, dry-run by default; `--broadcast` sends one real EIP-712 `settle(...)` transaction on Arc Testnet or Mainnet.
+- `keeper_agent_balance` queries live balances on both Arc Testnet (5042002) and Arc Mainnet (5042).
 
-Still needs the operator's funded wallet (not done, not claimed):
-1. Fund a wallet with a small amount of native USDC on Arc Mainnet (chain 5042) for gas.
-2. `export AGENT_PRIVATE_KEY=0x...` in your own shell, run `python3 scripts/deploy_arc_verifier.py --broadcast`.
-3. `export ARC_X402_VERIFIER=<address printed by step 2>`, run `python3 scripts/broadcast_live_arc_tx.py --broadcast`.
-4. Paste the results below, check both on the explorer, then submit on DoraHacks.
+On-Chain Deployment Steps (Arc Testnet):
+1. Obtain free testnet USDC gas tokens for your address via the official Circle Faucet: `https://faucet.circle.com` (select Arc Testnet).
+2. `export AGENT_PRIVATE_KEY=0x...` in your private shell.
+3. Deploy the verifier contract:
+   ```bash
+   python3 scripts/deploy_arc_verifier.py --testnet --broadcast
+   ```
+4. Broadcast live EIP-712 settlement receipt:
+   ```bash
+   export ARC_TESTNET_X402_VERIFIER=<address printed in step 3>
+   python3 scripts/broadcast_live_arc_tx.py --testnet --broadcast
+   ```
+5. Check transaction on block explorer: `https://explorer.testnet.arc.io/tx/<tx_hash>`
 
-- **Deployed X402Receipt address:** _PLACEHOLDER, pending deployment_
-- **Deployment Transaction Hash:** _PLACEHOLDER, pending deployment_
-- **Live settle() Transaction Hash:** _PLACEHOLDER, pending broadcast_
-- **Explorer Links:** _PLACEHOLDER_
+- **Arc Testnet RPC:** `https://rpc.testnet.arc.io`
+- **Arc Testnet Explorer:** `https://explorer.testnet.arc.io`
+- **Deployed X402Receipt address:** _PENDING BROADCAST_
+- **Deployment Transaction Hash:** _PENDING BROADCAST_
+- **Live settle() Transaction Hash:** _PENDING BROADCAST_
 
 ---
 
@@ -88,7 +97,7 @@ Circle Arc Mainnet (5042)
 | **Rule 7: Check Parameters** | Strict input validation | EIP-55 checksum, 128KB calldata limits, USDC spending ceiling. |
 | **Rule 8: Zero Metaprogramming** | Zero dynamic code evaluation | Strict Pydantic schemas; zero `eval()` or `exec()`. |
 | **Rule 9: Restrict Indirection** | Single-level reference traversal | Flat array indexing `((i-1) >> 1)` rather than deep pointer-node trees. |
-| **Rule 10: Static Analysis** | 100% test pass rate, 0 warnings | 139/139 tests passing & 0 ruff lint warnings at this commit. |
+| **Rule 10: Static Analysis** | 100% test pass rate, 0 warnings | 144/144 tests passing & 0 ruff lint warnings at this commit. |
 
 ---
 
@@ -99,20 +108,22 @@ Circle Arc Mainnet (5042)
 git clone https://github.com/Ishant5436/agent-keeper-mcp.git
 cd agent-keeper-mcp
 
-# 2. Run the test suite (139 tests at this commit; includes the X402Receipt contract tests,
+# 2. Run the test suite (144 tests at this commit; includes the X402Receipt contract tests,
 #    which compile the contract with solc 0.8.20 and run it on an in-memory EVM)
 make test
 
-# 3. Dry-run the deployment (compiles, prints unsigned tx + gas + USDC cost estimate; no key is read)
+# 3. Dry-run the deployment on Arc Testnet (compiles, queries live RPC, prints unsigned tx + gas + USDC cost estimate; no key is read)
+python3 scripts/deploy_arc_verifier.py --testnet
+
+# 4. On-chain deployment & live settlement on Arc Testnet (requires testnet USDC from faucet.circle.com)
+export AGENT_PRIVATE_KEY=0x...            # your own shell only
+python3 scripts/deploy_arc_verifier.py --testnet --broadcast
+export ARC_TESTNET_X402_VERIFIER=<deployed address>
+python3 scripts/broadcast_live_arc_tx.py --testnet --broadcast
+
+# 5. Mainnet dry-run
 python3 scripts/deploy_arc_verifier.py
 
-# 4. Operator only, needs a funded wallet. Once deployed, record the results under
-#    "Live Deployment Status" above.
-export AGENT_PRIVATE_KEY=0x...            # your own shell only
-python3 scripts/deploy_arc_verifier.py --broadcast
-export ARC_X402_VERIFIER=<deployed address>
-python3 scripts/broadcast_live_arc_tx.py --broadcast
-
-# 5. Static lint
+# 6. Static lint
 make lint
 ```

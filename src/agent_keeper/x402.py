@@ -17,7 +17,9 @@ from agent_keeper.schemas import X402PaymentRequest, X402PaymentResponse
 
 
 ARC_CHAIN_ID = 5042
+ARC_TESTNET_CHAIN_ID = 5042002
 VERIFIER_ENV_VAR = "ARC_X402_VERIFIER"
+TESTNET_VERIFIER_ENV_VAR = "ARC_TESTNET_X402_VERIFIER"
 ZERO_ADDRESS = "0x" + "00" * 20
 PERMIT_TTL_SECONDS = 300
 # Former hardcoded placeholder: no contract was ever deployed there.
@@ -31,19 +33,24 @@ class VerifierNotConfiguredError(RuntimeError):
 def resolve_verifier(chain_id: int) -> str:
     """Return the checksum-validated X402Receipt address, or fail closed.
 
-    There is deliberately no default: a permit signed against an address with
-    no contract behind it can never be redeemed.
+    Supports both Arc Mainnet (5042) and Arc Testnet (5042002).
     """
-    if chain_id != ARC_CHAIN_ID:
+    assert isinstance(chain_id, int), "Chain ID must be integer"
+    if chain_id not in (ARC_CHAIN_ID, ARC_TESTNET_CHAIN_ID):
         raise VerifierNotConfiguredError(
             f"No X402Receipt verifier is configured for chain {chain_id}; "
-            f"only Arc Mainnet ({ARC_CHAIN_ID}) is supported via {VERIFIER_ENV_VAR}."
+            f"only Arc ({ARC_CHAIN_ID}, {ARC_TESTNET_CHAIN_ID}) is supported via {VERIFIER_ENV_VAR}."
         )
-    raw = os.environ.get(VERIFIER_ENV_VAR, "").strip()
+    raw = ""
+    if chain_id == ARC_TESTNET_CHAIN_ID:
+        raw = os.environ.get(TESTNET_VERIFIER_ENV_VAR, "").strip()
     if not raw:
+        raw = os.environ.get(VERIFIER_ENV_VAR, "").strip()
+    if not raw:
+        net_name = "Testnet" if chain_id == ARC_TESTNET_CHAIN_ID else "Mainnet"
         raise VerifierNotConfiguredError(
             f"{VERIFIER_ENV_VAR} is not set. Deploy contracts/X402Receipt.sol to Arc "
-            "Mainnet (scripts/deploy_arc_verifier.py --broadcast) and set "
+            f"{net_name} (scripts/deploy_arc_verifier.py --broadcast) and set "
             f"{VERIFIER_ENV_VAR} to the deployed EIP-55 checksum address."
         )
     if not is_checksum_address(raw) or raw in (ZERO_ADDRESS, REJECTED_LEGACY_PLACEHOLDER):
@@ -51,6 +58,7 @@ def resolve_verifier(chain_id: int) -> str:
             f"{VERIFIER_ENV_VAR} must be a deployed, non-zero EIP-55 checksum address "
             f"(not the retired placeholder), got '{raw}'."
         )
+    assert is_checksum_address(raw), "Verifier must be valid checksum address"
     return raw
 
 
