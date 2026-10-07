@@ -57,8 +57,10 @@ def explorer_url() -> str:
 def rpc_call(method: str, params: list, url: str | None = None, timeout: float = 15.0):
     """Raw JSON-RPC call; raises RuntimeError on transport or RPC errors."""
     assert method, "method must be non-empty"
+    t = float(os.environ.get("ARC_RPC_TIMEOUT", str(timeout)))
+    assert t > 0, "timeout must be positive"
     try:
-        with httpx.Client(timeout=timeout) as client:
+        with httpx.Client(timeout=t) as client:
             resp = client.post(
                 url or rpc_url(),
                 json={"jsonrpc": "2.0", "method": method, "params": params, "id": 1},

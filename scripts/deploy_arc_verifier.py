@@ -134,6 +134,28 @@ def dry_run(args, chain_id: int | None = None) -> int:
     return 0
 
 
+def save_deployment_receipt(cid: int, addr: str, deployer: str, tx_hash: str, receipt: dict) -> Path:
+    assert isinstance(cid, int) and cid > 0, "cid must be positive"
+    assert isinstance(addr, str) and addr.startswith("0x"), "addr must be hex"
+    receipt_data = {
+        "network": "Arc Testnet" if cid == ARC_TESTNET_CHAIN_ID else "Arc Mainnet",
+        "chain_id": cid,
+        "contract_name": "X402Receipt",
+        "contract_address": addr,
+        "deployer_address": deployer,
+        "transaction_hash": tx_hash,
+        "block_number": int(receipt.get("blockNumber", "0x0"), 16),
+        "gas_used": int(receipt.get("gasUsed", "0x0"), 16),
+        "status": receipt.get("status"),
+        "explorer_url": f"{explorer_url()}/tx/{tx_hash}",
+    }
+    filename = "arc_testnet_receipt.json" if cid == ARC_TESTNET_CHAIN_ID else "arc_mainnet_receipt.json"
+    receipt_file = Path(__file__).resolve().parents[1] / filename
+    with open(receipt_file, "w") as f:
+        json.dump(receipt_data, f, indent=2)
+    return receipt_file
+
+
 def broadcast(chain_id: int | None = None) -> int:
     from eth_account import Account  # imported late: the dry-run path never touches keys
 
@@ -172,7 +194,8 @@ def broadcast(chain_id: int | None = None) -> int:
         return 1
     addr = to_checksum_address(receipt["contractAddress"])
     env_var = "ARC_TESTNET_X402_VERIFIER" if cid == ARC_TESTNET_CHAIN_ID else "ARC_X402_VERIFIER"
-    print(f"[CONFIRMED] X402Receipt deployed at {addr}\nNext: export {env_var}={addr}")
+    r_path = save_deployment_receipt(cid, addr, account.address, tx_hash, receipt)
+    print(f"[CONFIRMED] X402Receipt deployed at {addr}\nReceipt saved to: {r_path.name}\nNext: export {env_var}={addr}")
     return 0
 
 
