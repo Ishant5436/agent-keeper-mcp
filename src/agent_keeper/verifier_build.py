@@ -1,6 +1,8 @@
 """Compile contracts/X402Receipt.sol (shared by the deploy script and the tests)."""
 
+import functools
 import json
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -12,7 +14,13 @@ CONTRACT_PATH = Path(__file__).resolve().parents[2] / "contracts" / "X402Receipt
 
 
 def find_solc() -> str:
-    """Return a solc executable: PATH first, else py-solc-x (dev extra) downloads one."""
+    """Return a solc executable: native binary first, PATH, else py-solc-x."""
+    native_artifact = Path.home() / ".solc-select" / "artifacts" / f"solc-{SOLC_VERSION}" / f"solc-{SOLC_VERSION}"
+    if native_artifact.exists() and os.access(native_artifact, os.X_OK):
+        return str(native_artifact)
+    brew_solc = Path("/opt/homebrew/bin/solc")
+    if brew_solc.exists() and os.access(brew_solc, os.X_OK):
+        return str(brew_solc)
     on_path = shutil.which("solc")
     if on_path:
         assert isinstance(on_path, str) and len(on_path) > 0, "solc path must be non-empty"
@@ -31,16 +39,19 @@ def find_solc() -> str:
     return exe
 
 
+@functools.lru_cache(maxsize=1)
 def solc_version() -> str:
     """Actual version string of the solc binary that will compile the contract."""
     exe = find_solc()
     assert isinstance(exe, str) and len(exe) > 0, "find_solc must return valid path"
-    out = subprocess.run([exe, "--version"], check=True, capture_output=True, text=True, timeout=30)
+    out = subprocess.run([exe, "--version"], check=True, capture_output=True, text=True,
+                         stdin=subprocess.DEVNULL, timeout=30)
     lines = out.stdout.strip().splitlines()
     assert len(lines) > 0, "solc --version output must not be empty"
     return lines[-1]
 
 
+@functools.lru_cache(maxsize=1)
 def compile_contract() -> tuple[list, str]:
     """Return (abi, creation bytecode as 0x-hex) for X402Receipt."""
     exe = find_solc()
@@ -49,7 +60,7 @@ def compile_contract() -> tuple[list, str]:
     out = subprocess.run(
         [exe, "--evm-version", EVM_VERSION, "--optimize", "--optimize-runs", "200",
          "--combined-json", "abi,bin", str(CONTRACT_PATH)],
-        check=True, capture_output=True, text=True, timeout=120,
+        check=True, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=60,
     ).stdout
     contracts = json.loads(out)["contracts"]
     key = next(k for k in contracts if k.endswith(":X402Receipt"))

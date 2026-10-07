@@ -17,7 +17,7 @@ VERIFIER = "0xABaBaBaBABabABabAbAbABAbABabababaBaBABaB"
 
 def _run(script, *args, env_extra=None, drop=()):
     env = {k: v for k, v in os.environ.items() if k not in drop}
-    env.update({"PYTHONPATH": str(ROOT / "src"), "ARC_RPC_URL": "http://127.0.0.1:9"})  # unroutable
+    env.update({"PYTHONPATH": str(ROOT / "src"), "ARC_RPC_URL": "http://127.0.0.1:9", "ARC_RPC_TIMEOUT": "0.3"})
     env.update(env_extra or {})
     return subprocess.run(
         [sys.executable, str(ROOT / "scripts" / script), *args],

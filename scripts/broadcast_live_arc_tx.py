@@ -128,8 +128,44 @@ def broadcast(verifier: str, args, chain_id: int | None = None) -> int:
         print("[REVERTED] Transaction reverted; do not cite it as evidence.")
         return 1
     print(json.dumps({k: receipt.get(k) for k in ("transactionHash", "blockNumber", "gasUsed", "status")}, indent=2))
+    record_settle_receipt(cid, tx_hash, receipt)
     print(f"[CONFIRMED] Paste tx_hash {tx_hash} and the verifier address {verifier} into ARC_MICROGRANTS_SUBMISSION.md.")
     return 0
+
+
+def record_settle_receipt(cid: int, tx_hash: str, receipt: dict) -> None:
+    assert isinstance(cid, int) and cid > 0, "cid must be positive"
+    assert isinstance(tx_hash, str) and tx_hash.startswith("0x"), "tx_hash must be hex"
+    filename = "arc_testnet_receipt.json" if cid == ARC_TESTNET_CHAIN_ID else "arc_mainnet_receipt.json"
+    receipt_file = Path(__file__).resolve().parents[1] / filename
+    if receipt_file.exists():
+        try:
+            with open(receipt_file, "r") as f:
+                data = json.load(f)
+            data["settle_transaction_hash"] = tx_hash
+            data["settle_explorer_url"] = f"{explorer_url()}/tx/{tx_hash}"
+            data["settle_block_number"] = int(receipt.get("blockNumber", "0x0"), 16)
+            with open(receipt_file, "w") as f:
+                json.dump(data, f, indent=2)
+            print(f"Recorded settle transaction in {filename}")
+        except Exception as exc:
+            print(f"Warning: could not update {filename}: {exc}")
+
+
+def resolve_or_load_verifier(chain_id: int) -> str:
+    assert isinstance(chain_id, int) and chain_id > 0, "chain_id must be positive"
+    try:
+        return resolve_verifier(chain_id)
+    except VerifierNotConfiguredError as exc:
+        filename = "arc_testnet_receipt.json" if chain_id == ARC_TESTNET_CHAIN_ID else "arc_mainnet_receipt.json"
+        receipt_file = Path(__file__).resolve().parents[1] / filename
+        if receipt_file.exists():
+            with open(receipt_file, "r") as f:
+                data = json.load(f)
+            addr = to_checksum_address(data["contract_address"])
+            print(f"[AUTO-RESOLVED] Loaded verifier {addr} from {filename}")
+            return addr
+        raise exc
 
 
 def main() -> int:
@@ -150,7 +186,7 @@ def main() -> int:
     assert chain_id in (ARC_CHAIN_ID, ARC_TESTNET_CHAIN_ID), f"Invalid chain ID: {chain_id}"
     assert isinstance(args.amount, int), "Amount must be integer"
     try:
-        verifier = resolve_verifier(chain_id)
+        verifier = resolve_or_load_verifier(chain_id)
     except VerifierNotConfiguredError as exc:
         print(f"[ABORTED] {exc}")
         return 1
