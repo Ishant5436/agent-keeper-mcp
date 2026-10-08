@@ -40,9 +40,9 @@ On-Chain Deployment Steps (Arc Testnet):
 
 - **Arc Testnet RPC:** `https://rpc.testnet.arc.io`
 - **Arc Testnet Explorer:** `https://explorer.testnet.arc.io`
-- **Deployed X402Receipt address:** _PENDING BROADCAST_
-- **Deployment Transaction Hash:** _PENDING BROADCAST_
-- **Live settle() Transaction Hash:** _PENDING BROADCAST_
+- **Deployed X402Receipt address:** [`0x589fE98EDB63F3e158DdE791C5144369fAeC4cE5`](https://explorer.testnet.arc.io/address/0x589fE98EDB63F3e158DdE791C5144369fAeC4cE5)
+- **Deployment Transaction Hash:** [`0x56b6eea5b7f3408af6b961e62c85cfa0cc80076ce03dcd39e0803c577530e46c`](https://explorer.testnet.arc.io/tx/0x56b6eea5b7f3408af6b961e62c85cfa0cc80076ce03dcd39e0803c577530e46c) (Block 66163738, 435,859 gas)
+- **Live settle() Transaction Hash:** [`0x04ce874ecd72e5918f93d84d09f3484704c5345580620ce300914292b6f12720`](https://explorer.testnet.arc.io/tx/0x04ce874ecd72e5918f93d84d09f3484704c5345580620ce300914292b6f12720) (Block 66163775, 54,331 gas)
 
 ---
 
