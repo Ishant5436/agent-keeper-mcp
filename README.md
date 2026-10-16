@@ -15,7 +15,7 @@
 [![Upstream Merged](https://img.shields.io/badge/KeeperHub-PR%20%232547%20%26%20%232640%20(Merged)-brightgreen)](https://github.com/KeeperHub/keeperhub/pull/2547)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-> **Arc Mainnet Workflow Walkthrough (local, no broadcast):** `python3 scripts/demo_arc_mainnet.py` | **Instant MCP Demo:** `make demo` | **Arc verifier:** [`contracts/X402Receipt.sol`](contracts/X402Receipt.sol) (see "Arc x402 Receipt Verifier" below; not yet deployed)
+> **Arc Mainnet Workflow Walkthrough (local, no broadcast):** `python3 scripts/demo_arc_mainnet.py` | **Instant MCP Demo:** `make demo` | **Arc verifier:** [`contracts/X402Receipt.sol`](contracts/X402Receipt.sol) (deployed & verified on Arc Testnet: [`0x589fE98EDB63F3e158DdE791C5144369fAeC4cE5`](https://explorer.testnet.arc.io/address/0x589fE98EDB63F3e158DdE791C5144369fAeC4cE5))
 
 ![AgentKeeper MCP Demo](assets/agent_keeper_demo.gif)
 
@@ -99,7 +99,12 @@ python3 scripts/broadcast_live_arc_tx.py
 python3 scripts/broadcast_live_arc_tx.py --broadcast
 ```
 
-Status: contract, tests and scripts are done. **Not yet done:** deployment on Arc Mainnet and the live `settle()` transaction, which need a wallet funded with a little native USDC. Deployed address: _pending_. Transaction hash: _pending_.
+Status:
+- **Arc Testnet (Deployed & Live Verified):**
+  - Contract Address: [`0x589fE98EDB63F3e158DdE791C5144369fAeC4cE5`](https://explorer.testnet.arc.io/address/0x589fE98EDB63F3e158DdE791C5144369fAeC4cE5)
+  - Deployment Tx: [`0x56b6eea5b7f3408af6b961e62c85cfa0cc80076ce03dcd39e0803c577530e46c`](https://explorer.testnet.arc.io/tx/0x56b6eea5b7f3408af6b961e62c85cfa0cc80076ce03dcd39e0803c577530e46c) (Block 66163738, 435,859 gas)
+  - Live `settle()` Receipt Tx: [`0x04ce874ecd72e5918f93d84d09f3484704c5345580620ce300914292b6f12720`](https://explorer.testnet.arc.io/tx/0x04ce874ecd72e5918f93d84d09f3484704c5345580620ce300914292b6f12720) (Block 66163775, 54,331 gas)
+- **Arc Mainnet:** Contract, tests, and deployment scripts verified. Mainnet broadcast pending operator-funded gas wallet.
 
 ### 4. Merkle Audit Trail (`keeper_audit_verify`)
 * Builds cryptographic inclusion proofs for all relay actions using a flat array Merkle heap.
