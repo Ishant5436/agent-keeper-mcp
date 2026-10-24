@@ -10,7 +10,8 @@ from pathlib import Path
 SOLC_VERSION = "0.8.20"
 # Paris avoids PUSH0 (Shanghai), whose support on Arc is unverified.
 EVM_VERSION = "paris"
-CONTRACT_PATH = Path(__file__).resolve().parents[2] / "contracts" / "X402Receipt.sol"
+CONTRACTS_DIR = Path(__file__).resolve().parents[2] / "contracts"
+CONTRACT_PATH = CONTRACTS_DIR / "X402Receipt.sol"
 
 
 def find_solc() -> str:
@@ -51,19 +52,20 @@ def solc_version() -> str:
     return lines[-1]
 
 
-@functools.lru_cache(maxsize=1)
-def compile_contract() -> tuple[list, str]:
-    """Return (abi, creation bytecode as 0x-hex) for X402Receipt."""
+@functools.lru_cache(maxsize=4)
+def compile_contract(contract_name: str = "X402Receipt") -> tuple[list, str]:
+    """Return (abi, creation bytecode as 0x-hex) for target contract in contracts/."""
     exe = find_solc()
     assert isinstance(exe, str) and len(exe) > 0, "find_solc must return valid path"
-    assert CONTRACT_PATH.exists(), f"Contract file not found at {CONTRACT_PATH}"
+    file_path = CONTRACTS_DIR / f"{contract_name}.sol"
+    assert file_path.exists(), f"Contract file not found at {file_path}"
     out = subprocess.run(
         [exe, "--evm-version", EVM_VERSION, "--optimize", "--optimize-runs", "200",
-         "--combined-json", "abi,bin", str(CONTRACT_PATH)],
+         "--combined-json", "abi,bin", str(file_path)],
         check=True, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=60,
     ).stdout
     contracts = json.loads(out)["contracts"]
-    key = next(k for k in contracts if k.endswith(":X402Receipt"))
+    key = next(k for k in contracts if k.endswith(f":{contract_name}"))
     abi = contracts[key]["abi"]
     abi = json.loads(abi) if isinstance(abi, str) else abi
     bytecode = "0x" + contracts[key]["bin"]
