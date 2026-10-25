@@ -55,6 +55,7 @@
             <select id="networkSelect" class="bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded-lg px-3 py-2 outline-none focus:border-cyan-500">
                 <option value="5042">Arc Mainnet (Chain ID 5042)</option>
                 <option value="5042002" selected>Arc Testnet (Chain ID 5042002)</option>
+                <option value="133">HashKey Chain Testnet (Chain ID 133)</option>
             </select>
             <button id="connectWalletBtn" class="btn-cyan text-xs px-4 py-2 rounded-lg">
                 Connect Wallet
@@ -285,6 +286,12 @@
                 name: "Arc Testnet",
                 rpc: "https://rpc.testnet.arc.io",
                 explorer: "https://explorer.testnet.arc.io",
+                verifier: "0x589fE98EDB63F3e158DdE791C5144369fAeC4cE5"
+            },
+            133: {
+                name: "HashKey Chain Testnet",
+                rpc: "https://testnet.hsk.xyz",
+                explorer: "https://testnet-explorer.hsk.xyz",
                 verifier: "0x589fE98EDB63F3e158DdE791C5144369fAeC4cE5"
             }
         };
