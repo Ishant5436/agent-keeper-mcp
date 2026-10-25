@@ -57,9 +57,14 @@ In the emerging agentic economy, autonomous AI systems must pay each other for c
 
 ---
 
-## 4. Verification Evidence & Test Status
+## 4. HashKey Chain Integration & Verification Evidence
 
-- **Automated Test Suite:** 148 / 148 passing unit and property fuzz tests.
-- **Contract Code:** `contracts/ArcAgentEscrow.sol` and `contracts/X402Receipt.sol`.
-- **EIP-712 Receipt Proof:** Block 66163775 (`0x04ce874ecd72e5918f93d84d09f3484704c5345580620ce300914292b6f12720`).
+- **Target Chain:** HashKey Chain Testnet (Chain ID 133 / `0x85`)
+- **RPC Endpoint:** `https://testnet.hsk.xyz`
+- **Block Explorer:** `https://testnet-explorer.hsk.xyz`
+- **Native Currency:** HSK (18 decimals)
+- **Deployment Script:** `scripts/deploy_hashkey_escrow.py` (verified dry-run & live broadcast support)
+- **Automated Test Suite:** 151 / 151 passing unit, fuzz, and chain integration tests (100% green).
+- **Interactive Web Console:** `https://ishant5436.github.io/agent-keeper-mcp/` (supports HashKey Chain Testnet switching and HSK escrow routing).
+- **Smart Contract Source:** `contracts/ArcAgentEscrow.sol` and `contracts/X402Receipt.sol`.
 - **License:** Permissive open-source MIT License.
