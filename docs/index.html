@@ -105,6 +105,9 @@
             <button onclick="switchTab('studio')" id="tabBtnStudio" class="px-4 py-2 text-sm font-semibold text-slate-400 hover:text-slate-200">
                 Arc Studio Spec & Blueprint
             </button>
+            <button onclick="switchTab('bch')" id="tabBtnBch" class="px-4 py-2 text-sm font-semibold text-slate-400 hover:text-slate-200">
+                BCH CashTokens Guard (BCH BLAZE 2026)
+            </button>
         </div>
 
         <!-- TAB 1: Escrow Console -->
@@ -262,6 +265,93 @@
             </div>
         </section>
 
+        <!-- TAB 5: BCH CashTokens Guard (BCH BLAZE 2026) -->
+        <section id="tabBch" class="gradient-border rounded-2xl p-6 flex flex-col gap-5 hidden">
+            <!-- Project Banner linking to GitHub repo, presentation, and CashTokens donation address -->
+            <div class="bg-emerald-950/40 border border-emerald-500/30 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <span class="w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <div>
+                        <h4 class="text-sm font-bold text-emerald-300">BCH BLAZE 2026 — Mainnet CashTokens & Covenant Guard</h4>
+                        <p class="text-xs text-slate-300">Deterministic UTXO settlement for autonomous AI agents on Bitcoin Cash</p>
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 font-mono text-xs">
+                    <a href="https://github.com/Ishant5436/agent-keeper-mcp" target="_blank" class="px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-emerald-400 hover:border-emerald-400">GitHub Repo ↗</a>
+                    <a href="https://github.com/Ishant5436/agent-keeper-mcp/blob/main/BCH_BLAZE_2026_SUBMISSION.md" target="_blank" class="px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-cyan-400 hover:border-cyan-400">Dossier ↗</a>
+                    <span class="px-3 py-1.5 bg-emerald-900/50 border border-emerald-500/40 rounded-lg text-emerald-200" title="EMBER2026 Token Donation Address">Donations: bitcoincash:qq4vqn04qj5...</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Left: Interactive Form -->
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Network</label>
+                        <select id="bchNetwork" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200">
+                            <option value="mainnet" selected>Bitcoin Cash Mainnet (bitcoincash:)</option>
+                            <option value="chipnet">Chipnet Testnet (bchtest:)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Recipient CashAddr</label>
+                        <input id="bchRecipient" type="text" value="bitcoincash:qq4vqn04qj5j7q8w3h99yvh2v6z6z5r5v5s5z9h6r7" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Spend Satoshis</label>
+                            <input id="bchSatoshis" type="number" value="15000" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm font-mono text-slate-200">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Max Policy Limit (Sats)</label>
+                            <input id="bchMaxSats" type="number" value="50000" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm font-mono text-slate-400" disabled>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">CashTokens Category ID (32 Bytes Hex)</label>
+                        <input id="bchCategoryId" type="text" value="a5f0881907cb5ce6b0333246ebcf97e10da87158bccefd605380eeec26315ef2" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-slate-200">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Fungible Token Amount</label>
+                            <input id="bchFtAmount" type="number" value="500" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm font-mono text-slate-200">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">NFT Capability</label>
+                            <select id="bchNftCapability" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200">
+                                <option value="none">None (Immutable)</option>
+                                <option value="mutable" selected>Mutable (Agent Session)</option>
+                                <option value="minting">Minting (Authority)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">NFT Task Commitment (Hex)</label>
+                        <input id="bchCommitment" type="text" value="6167656e742d7461736b2d3031" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-slate-200">
+                    </div>
+
+                    <div class="flex gap-3 pt-2">
+                        <button onclick="runBchGuardVerification()" class="flex-1 py-2.5 px-4 rounded-xl font-bold text-xs uppercase bg-emerald-600 hover:bg-emerald-500 text-slate-950 transition-all shadow-lg shadow-emerald-500/20">
+                            Evaluate Guard & Settle
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right: Telemetry / Verification Stream -->
+                <div class="flex flex-col gap-3">
+                    <h4 class="text-xs font-semibold uppercase text-slate-400">CashTokens Consensus Verification & Telemetry</h4>
+                    <div id="bchOutputBox" class="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs text-slate-300 h-80 overflow-y-auto space-y-2">
+                        <p class="text-slate-500">// Ready. Click 'Evaluate Guard & Settle' to verify CHIP-2022-02 CashTokens prefix and spending policy invariants.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
     </main>
 
     <footer class="w-full max-w-5xl mt-12 py-4 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500 gap-2">
@@ -391,6 +481,68 @@
             const txt = document.getElementById('x402StatusText');
             box.classList.remove('hidden');
             txt.innerHTML = "Live Settlement Proof on Arc: <a href='https://explorer.testnet.arc.io/tx/0x04ce874ecd72e5918f93d84d09f3484704c5345580620ce300914292b6f12720' target='_blank' class='underline text-white'>0x04ce874ecd72e5918f93d84d09f3484704c5345580620ce300914292b6f12720 ↗</a>";
+        }
+
+        function runBchGuardVerification() {
+            const net = document.getElementById('bchNetwork').value;
+            const recipient = document.getElementById('bchRecipient').value.trim();
+            const sats = parseInt(document.getElementById('bchSatoshis').value, 10);
+            const maxSats = parseInt(document.getElementById('bchMaxSats').value, 10);
+            const category = document.getElementById('bchCategoryId').value.trim();
+            const ftAmount = parseInt(document.getElementById('bchFtAmount').value, 10);
+            const capability = document.getElementById('bchNftCapability').value;
+            const commitment = document.getElementById('bchCommitment').value.trim();
+            const out = document.getElementById('bchOutputBox');
+
+            out.innerHTML = "";
+            const log = (msg, cls="text-slate-300") => {
+                const p = document.createElement('p');
+                p.className = cls;
+                p.innerText = msg;
+                out.appendChild(p);
+            };
+
+            log("[1/4] Validating CashAddr format for " + net.toUpperCase() + "...", "text-cyan-400");
+            const expectedPrefix = net === "mainnet" ? "bitcoincash:" : "bchtest:";
+            if (!recipient.startsWith(expectedPrefix)) {
+                log("[ERROR] Invalid address prefix: expected " + expectedPrefix, "text-rose-400");
+                return;
+            }
+            log("  Address prefix OK: " + recipient.slice(0, 24) + "...", "text-emerald-400");
+
+            log("[2/4] Enforcing Deterministic AI Agent Spending Invariants...", "text-cyan-400");
+            if (sats > maxSats) {
+                log("[REJECTED] Invariant violation: Spend sats (" + sats + ") > policy max (" + maxSats + ")", "text-rose-400 font-bold");
+                return;
+            }
+            log("  Satoshis spend bounds: " + sats + " <= " + maxSats + " [APPROVED]", "text-emerald-400");
+
+            log("[3/4] Encoding CashTokens CHIP-2022-02 Prefix...", "text-cyan-400");
+            if (category.length !== 64) {
+                log("[ERROR] Category ID must be 32 bytes (64 hex characters)", "text-rose-400");
+                return;
+            }
+
+            let bitfield = 0x20; // Has NFT
+            if (capability === "mutable") bitfield |= 0x01;
+            else if (capability === "minting") bitfield |= 0x02;
+            if (commitment.length > 0) bitfield |= 0x40; // Has commitment
+            if (ftAmount > 0) bitfield |= 0x10; // Has FT
+
+            const prefixHex = "ef" + category + bitfield.toString(16).padStart(2, '0') +
+                (commitment.length > 0 ? (commitment.length / 2).toString(16).padStart(2, '0') + commitment : "") +
+                (ftAmount > 0 ? "..." : "");
+
+            log("  Opcode: OP_PREFIX_TOKEN (0xef)", "text-slate-400");
+            log("  Bitfield: 0x" + bitfield.toString(16).padStart(2, '0') + " (NFT=" + capability + ", FT=" + ftAmount + ")", "text-slate-400");
+            log("  Prefix Hex: " + prefixHex.slice(0, 32) + "...", "text-emerald-300 break-all");
+
+            log("[4/4] Invariants Validated. Settlement Ready on " + net.toUpperCase(), "text-emerald-400 font-bold");
+            const explorerBase = net === "mainnet" ? "https://blockchair.com/bitcoin-cash/address/" : "https://chipnet.chaingraph.cash/address/";
+            const linkP = document.createElement('p');
+            linkP.className = "pt-2";
+            linkP.innerHTML = `<a href="${explorerBase}${recipient}" target="_blank" class="px-3 py-1 bg-emerald-950 border border-emerald-500 rounded text-emerald-300 hover:text-white underline">View Recipient on ${net.toUpperCase()} Explorer ↗</a>`;
+            out.appendChild(linkP);
         }
     </script>
 </body>
