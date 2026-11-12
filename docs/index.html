@@ -335,7 +335,10 @@
                         <input id="bchCommitment" type="text" value="6167656e742d7461736b2d3031" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-slate-200">
                     </div>
 
-                    <div class="flex gap-3 pt-2">
+                    <div class="flex flex-col sm:flex-row gap-3 pt-2">
+                        <button onclick="connectBchWallet()" id="bchConnectWalletBtn" class="flex-1 py-2.5 px-4 rounded-xl font-bold text-xs uppercase bg-slate-900 border border-emerald-500/40 hover:border-emerald-400 text-emerald-300 transition-all">
+                            Connect WizardConnect / CashAddr
+                        </button>
                         <button onclick="runBchGuardVerification()" class="flex-1 py-2.5 px-4 rounded-xl font-bold text-xs uppercase bg-emerald-600 hover:bg-emerald-500 text-slate-950 transition-all shadow-lg shadow-emerald-500/20">
                             Evaluate Guard & Settle
                         </button>
@@ -481,6 +484,41 @@
             const txt = document.getElementById('x402StatusText');
             box.classList.remove('hidden');
             txt.innerHTML = "Live Settlement Proof on Arc: <a href='https://explorer.testnet.arc.io/tx/0x04ce874ecd72e5918f93d84d09f3484704c5345580620ce300914292b6f12720' target='_blank' class='underline text-white'>0x04ce874ecd72e5918f93d84d09f3484704c5345580620ce300914292b6f12720 ↗</a>";
+        }
+
+        async function connectBchWallet() {
+            const btn = document.getElementById('bchConnectWalletBtn');
+            const recipientInput = document.getElementById('bchRecipient');
+            if (window.bitcoinCash && window.bitcoinCash.getAddress) {
+                try {
+                    const addr = await window.bitcoinCash.getAddress();
+                    if (addr) {
+                        recipientInput.value = addr;
+                        btn.innerText = "Connected: " + addr.slice(0, 16) + "...";
+                        btn.classList.add("text-emerald-400", "border-emerald-400");
+                        return;
+                    }
+                } catch (e) {
+                    console.warn("BCH provider connection error:", e);
+                }
+            }
+            if (window.paytaca && window.paytaca.getAddress) {
+                try {
+                    const addr = await window.paytaca.getAddress();
+                    if (addr) {
+                        recipientInput.value = addr;
+                        btn.innerText = "Connected: " + addr.slice(0, 16) + "...";
+                        return;
+                    }
+                } catch (e) {
+                    console.warn("Paytaca connection error:", e);
+                }
+            }
+            const custom = prompt("Enter or confirm your Bitcoin Cash (CashAddr) Address:", recipientInput.value);
+            if (custom && custom.trim().length > 0) {
+                recipientInput.value = custom.trim();
+                btn.innerText = "CashAddr: " + custom.trim().slice(0, 16) + "...";
+            }
         }
 
         function runBchGuardVerification() {
