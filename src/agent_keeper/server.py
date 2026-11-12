@@ -15,6 +15,14 @@ from mcp.server.fastmcp import FastMCP
 
 from agent_keeper.audit import AuditProofVerifier
 from agent_keeper.config import PUBLIC_RPC_URLS, SUPPORTED_CHAINS
+from agent_keeper.bch_chain import (
+    CashTokenCapability,
+    CashTokenOutput,
+    encode_cashtoken_prefix,
+    format_bch_explorer_url,
+    verify_agent_spending_guard,
+    verify_bch_address,
+)
 from agent_keeper.creditcoin import CreditcoinSettlementManager
 from agent_keeper.relay import KeeperRelayClient
 from agent_keeper.schemas import (
@@ -240,6 +248,54 @@ def keeper_creditcoin_settle(
             "intent_id": intent_id,
             "chain_id": 102031,
         }
+
+
+@mcp.tool()
+def keeper_bch_settle(
+    network: str,
+    recipient_address: str,
+    spend_satoshis: int,
+    token_category: str | None = None,
+    token_amount: int = 0,
+    nft_capability: str | None = None,
+    nft_commitment_hex: str | None = None,
+    policy: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """
+    Settle or guard Bitcoin Cash (BCH) and CashTokens transactions for autonomous AI agents.
+    Enforces deterministic spending invariants, validates CashAddr, and encodes CHIP-2022-02 prefixes.
+    """
+    assert isinstance(network, str) and network in ("mainnet", "chipnet"), "Network must be 'mainnet' or 'chipnet'"
+    assert isinstance(spend_satoshis, int) and spend_satoshis >= 0, "spend_satoshis must be non-negative int"
+
+    if not verify_bch_address(recipient_address, network=network):
+        return {"success": False, "verdict": "INVALID_ADDRESS", "error": f"Invalid {network} CashAddr"}
+
+    tx = {"spend_satoshis": spend_satoshis, "token_category": token_category, "token_amount": token_amount}
+    eff_policy = policy or {"max_satoshis_per_tx": 200_000, "max_ft_per_tx": 100_000, "allowed_categories": [token_category] if token_category else []}
+    allowed, reason = verify_agent_spending_guard(tx, eff_policy)
+    if not allowed:
+        return {"success": False, "verdict": "GUARD_REJECTED", "error": reason}
+
+    prefix_hex = None
+    if token_category:
+        cap_enum = CashTokenCapability[nft_capability.upper()] if nft_capability else None
+        comm_bytes = bytes.fromhex(nft_commitment_hex) if nft_commitment_hex else b""
+        token = CashTokenOutput(category_id=token_category, ft_amount=token_amount, capability=cap_enum, commitment=comm_bytes)
+        prefix_hex = encode_cashtoken_prefix(token).hex()
+
+    assert allowed is True, "Guard invariant violated"
+    return {
+        "success": True,
+        "verdict": "APPROVED",
+        "network": network,
+        "recipient": recipient_address,
+        "spend_satoshis": spend_satoshis,
+        "token_category": token_category,
+        "token_amount": token_amount,
+        "cashtoken_prefix_hex": prefix_hex,
+        "explorer_url": format_bch_explorer_url(recipient_address, network=network),
+    }
 
 
 @mcp.tool()

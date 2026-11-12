@@ -192,3 +192,34 @@ def test_mcp_creditcoin_settle_tool_adversarial_unanchored_bypass_rejected_syste
     assert res["success"] is False
     assert "Unanchored Merkle root" in res["error"]
     assert _creditcoin_manager.get_escrow_balance(intent_id) == 999.0
+
+
+def test_mcp_bch_settle_tool():
+    from agent_keeper.server import keeper_bch_settle
+
+    # Approved mainnet payment with CashTokens
+    valid_addr = "bitcoincash:qq4vqn04qj5j7q8w3h99yvh2v6z6z5r5v5s5z9h6r7"
+    category = "9" * 64
+    res = keeper_bch_settle(
+        network="mainnet",
+        recipient_address=valid_addr,
+        spend_satoshis=10000,
+        token_category=category,
+        token_amount=50,
+        nft_capability="mutable",
+        nft_commitment_hex="beef",
+    )
+    assert res["success"] is True
+    assert res["verdict"] == "APPROVED"
+    assert res["cashtoken_prefix_hex"] is not None
+    assert "blockchair.com" in res["explorer_url"]
+
+    # Rejected on invalid address
+    bad_res = keeper_bch_settle(
+        network="mainnet",
+        recipient_address="not_a_bch_address",
+        spend_satoshis=1000,
+    )
+    assert bad_res["success"] is False
+    assert bad_res["verdict"] == "INVALID_ADDRESS"
+
